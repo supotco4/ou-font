@@ -9,3 +9,5 @@
 Бүтээсэн: А.Хонгор
 
 Cloudflare Pages дээр байрладаг: `main` салбарт push хийхэд `public/` хавтас автоматаар нийтлэгдэнэ.
+
+Build output directory: `public`
