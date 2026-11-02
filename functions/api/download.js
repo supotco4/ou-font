@@ -1,15 +1,6 @@
-// GET  /api/download — total number of fonts downloaded
-// POST /api/download — count one download
+// POST /api/download — count one download.
+// The total is private: it is only read from the D1 database, never served.
 import { json, ipHash } from "../_lib/util.js";
-
-async function total(env) {
-  const row = await env.DB.prepare("SELECT COUNT(*) AS n FROM downloads").first();
-  return (row && row.n) || 0;
-}
-
-export async function onRequestGet({ env }) {
-  return json({ ok: true, total: await total(env) });
-}
 
 export async function onRequestPost({ request, env }) {
   let body = {};
@@ -21,8 +12,8 @@ export async function onRequestPost({ request, env }) {
     const row = await env.DB.prepare(
       "SELECT COUNT(*) AS n FROM downloads WHERE ip_hash = ? AND created_at > datetime('now', '-1 hour')"
     ).bind(ih).first();
-    if (row && row.n >= 30) return json({ ok: true, total: await total(env), skipped: true });
+    if (row && row.n >= 30) return json({ ok: true });
   }
   await env.DB.prepare("INSERT INTO downloads (ext, country, ip_hash) VALUES (?, ?, ?)").bind(ext, country, ih).run();
-  return json({ ok: true, total: await total(env) });
+  return json({ ok: true });
 }
