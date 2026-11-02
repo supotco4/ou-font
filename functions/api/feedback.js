@@ -7,7 +7,7 @@ const LINKY = /(https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|ru|xyz|top|io|me|in
 
 export async function onRequestGet({ env }) {
   const { results } = await env.DB.prepare(
-    "SELECT id, created_at, kind, message, font, reply FROM feedback WHERE status = 'public' ORDER BY id DESC LIMIT 50"
+    "SELECT id, created_at, kind, message, font, reply, nickname FROM feedback WHERE status = 'public' ORDER BY id DESC LIMIT 50"
   ).all();
   return json({ ok: true, items: results || [] });
 }
@@ -24,7 +24,7 @@ export async function onRequestPost({ request, env }) {
   const message = String(body.message || "").trim().slice(0, 2000);
   if (message.length < 3) return json({ ok: false, error: "too_short" }, 400);
   const kind = KINDS.includes(body.kind) ? body.kind : "other";
-  const contact = String(body.contact || "").trim().slice(0, 200) || null;
+  const nickname = String(body.nickname || "").replace(/\s+/g, " ").trim().slice(0, 40) || null;
   const font = String(body.font || "").trim().slice(0, 120) || null;
   const country = (request.cf && request.cf.country) || null;
   const ua = (request.headers.get("user-agent") || "").slice(0, 300);
@@ -37,10 +37,10 @@ export async function onRequestPost({ request, env }) {
     if (row && row.n >= 5) return json({ ok: false, error: "rate_limited" }, 429);
   }
 
-  const status = LINKY.test(message) || (font && LINKY.test(font)) ? "held" : "public";
+  const status = [message, font, nickname].some((t) => t && LINKY.test(t)) ? "held" : "public";
   const res = await env.DB.prepare(
-    "INSERT INTO feedback (kind, message, contact, font, country, ua, ip_hash, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-  ).bind(kind, message, contact, font, country, ua, ih, status).run();
+    "INSERT INTO feedback (kind, message, nickname, font, country, ua, ip_hash, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  ).bind(kind, message, nickname, font, country, ua, ih, status).run();
 
   return json({ ok: true, held: status !== "public", id: res.meta && res.meta.last_row_id });
 }
