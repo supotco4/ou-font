@@ -10,4 +10,4 @@
 
 Cloudflare Pages дээр байрладаг: `main` салбарт push хийхэд `public/` хавтас автоматаар нийтлэгдэнэ.
 
-Build output directory: `public`
+Build output directory: `public` · Cloudflare Web Analytics идэвхтэй
