@@ -93,6 +93,28 @@
   .foot .hint{color:var(--faint);font-size:13px}
   .msg{font-size:13px;color:var(--soft);min-height:18px;text-align:right;margin-top:10px}
 
+
+  .fb{margin-top:28px;background:var(--surface);border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow);padding:30px 30px 26px}
+  .fb h2{font:700 22px/1.2 Unbounded,sans-serif;letter-spacing:-.03em;margin-bottom:6px}
+  .fb .sub{color:var(--soft);font-size:14px;margin-bottom:18px}
+  .kinds{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;border:0;padding:0}
+  .kinds legend{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .kinds input{position:absolute;opacity:0;pointer-events:none}
+  .kinds label{font-size:14px;font-weight:500;padding:9px 16px;border-radius:99px;border:1px solid var(--line2);cursor:pointer;color:var(--soft);transition:.15s}
+  .kinds input:checked+label{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .kinds input:focus-visible+label{outline:2px solid var(--accent);outline-offset:2px}
+  .fb textarea,.fb input[type=text]{width:100%;font:inherit;font-size:15px;color:var(--ink);background:var(--tile);border:1px solid var(--line);border-radius:16px;padding:14px 16px;outline:0;transition:border-color .15s}
+  .fb textarea{min-height:120px;resize:vertical;margin-bottom:10px}
+  .fb textarea:focus,.fb input[type=text]:focus{border-color:var(--accent)}
+  .fb .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .fb .row input[type=text]{flex:1;min-width:220px}
+  .fb .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+  .fb .status{font-size:13.5px;color:var(--soft);margin-top:10px;min-height:20px}
+  .fb .status.ok{color:#22a06b}.fb .status.err{color:#e5484d}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  nav .links{display:flex;align-items:center;gap:10px}
+  nav .navlink{font-size:13px;color:var(--soft);text-decoration:none;padding:6px 12px;border-radius:99px}
+  nav .navlink:hover{color:var(--ink);background:var(--surface)}
   footer{margin-top:48px;text-align:center;color:var(--faint);font-size:12.5px}
   footer .sep{margin:0 6px}
   footer .by{color:var(--soft);font-weight:500}
@@ -109,7 +131,10 @@
 <div class="wrap">
   <nav>
     <div class="brand"><div class="logo">ӨҮ</div>Өү</div>
-    <div class="engine loading" id="engine"><span class="dot"></span><span id="engineText">Бэлтгэж байна</span></div>
+    <div class="links">
+      <a class="navlink" href="#feedback">Санал хүсэлт</a>
+      <div class="engine loading" id="engine"><span class="dot"></span><span id="engineText">Бэлтгэж байна</span></div>
+    </div>
   </nav>
 
   <section class="hero">
@@ -147,6 +172,28 @@
     <div class="foot"><span class="hint">Текстийг засаж туршиж болно</span></div>
   </section>
   <div class="msg" id="msg"></div>
+
+  <section class="fb" id="feedback">
+    <h2>Санал хүсэлт</h2>
+    <p class="sub">Алдаа олсон, эсвэл сайжруулах санаа байвал бичээрэй. Бүгдийг нь уншина.</p>
+    <form id="fbForm" novalidate>
+      <fieldset class="kinds">
+        <legend>Төрөл</legend>
+        <input type="radio" name="kind" id="k1" value="idea" checked><label for="k1">Санал</label>
+        <input type="radio" name="kind" id="k2" value="bug"><label for="k2">Алдаа</label>
+        <input type="radio" name="kind" id="k3" value="other"><label for="k3">Бусад</label>
+      </fieldset>
+      <label class="sr" for="fbMsg">Таны санал</label>
+      <textarea id="fbMsg" maxlength="2000" placeholder="Жишээ нь: Ө үсгийн зураас нимгэн гарлаа, ийм фонт дээр алдаа гарч байна…" required></textarea>
+      <div class="hp" aria-hidden="true"><label for="fbWeb">Website</label><input type="text" id="fbWeb" tabindex="-1" autocomplete="off"></div>
+      <div class="row">
+        <label class="sr" for="fbContact">Холбоо барих (заавал биш)</label>
+        <input type="text" id="fbContact" maxlength="200" placeholder="Имэйл эсвэл утас (заавал биш)">
+        <button class="btn primary" type="submit" id="fbSend">Илгээх</button>
+      </div>
+      <div class="status" id="fbStatus" role="status" aria-live="polite"></div>
+    </form>
+  </section>
 
   <footer>Фонтын лиценз өөрчлөхийг зөвшөөрдөг эсэхийг шалгаарай. <span class="sep">·</span> <span class="by">А.Хонгор</span></footer>
 </div>
@@ -975,6 +1022,32 @@ def plan_ue(font, opts=None):
     return up, lo, st
 
 
+
+# Cyrillic letters drawn exactly like a Latin one
+LOOKALIKES = {
+    0x0410: "A", 0x0412: "B", 0x0415: "E", 0x041A: "K", 0x041C: "M", 0x041D: "H",
+    0x041E: "O", 0x0420: "P", 0x0421: "C", 0x0422: "T", 0x0425: "X",
+    0x0430: "a", 0x0435: "e", 0x043E: "o", 0x0440: "p", 0x0441: "c", 0x0443: "y", 0x0445: "x",
+}
+
+
+def cyr_lookalikes(font, st=None):
+    """[(codepoint, glyph)] for missing Cyrillic letters that can reuse a Latin
+    glyph. Empty for faux-Cyrillic fonts, whose Latin slots hold other shapes."""
+    cmap = font.getBestCmap()
+    if st is None:
+        st = plan_ue(font)[2]
+    sy, sc = st.get("Y", (0.0, 0.0))
+    if sc > sy + 0.05:
+        return []
+    out = []
+    for cp, lat in LOOKALIKES.items():
+        if cp not in cmap and ord(lat) in cmap:
+            if cp == 0x0443 and "y" in st and st["y"][1] > st["y"][0] + 0.05:
+                continue
+            out.append((cp, cmap[ord(lat)]))
+    return out
+
 def _copy(font, src, pen):
     font.getGlyphSet()[src].draw(pen)
 
@@ -1042,6 +1115,7 @@ def build(data, opts):
     if src_o:
         plan.append((0x04E9, "bar", src_o, opts.get("barL", 85), opts.get("offL", 0)))
     up, lo, st = plan_ue(font, opts)
+    mapped = cyr_lookalikes(font, st)
     if up:
         plan.append((0x04AE, up[0], up[1], opts.get("fork", 100)))
     if lo:
@@ -1093,7 +1167,10 @@ def build(data, opts):
         bad = st["Y"][1] > st["Y"][0] + 0.05
         report.append(f"Фонтын «Y» үсэг: Y-тэй {st['Y'][0]:.0%}, Ч-тэй {st['Y'][1]:.0%} төстэй"
                       + (" → Ч хэлбэртэй тул Ү-г өөр үсгээс угсарлаа" if bad else ""))
-    if not new_glyphs:
+    if mapped:
+        report.append("Латинтай адил хэлбэртэй кирилл үсгийг холбов: "
+                      + " ".join(chr(cp) for cp, _ in mapped))
+    if not new_glyphs and not mapped:
         return None, None, report
 
     for gname in new_glyphs:
@@ -1154,6 +1231,8 @@ def build(data, opts):
                 continue
             for gname, (cp, *_r) in new_glyphs.items():
                 t.cmap[cp] = gname
+            for cp, gname in mapped:
+                t.cmap.setdefault(cp, gname)
     if "post" in font and font["post"].formatType == 2.0:
         pass  # names come from glyph order on compile
     if "gvar" in font:  # variable TTF: new glyphs get no variations
@@ -1216,6 +1295,7 @@ def font_info(data):
         "ue": [[k, chr(_rev(cmap, n))] if k else None for k, n in
                [p if p else (None, None) for p in plan_ue(font)[:2]]],
         "cyr": sum(1 for c in range(0x0410, 0x0450) if c in cmap),
+        "mapped": "".join(chr(cp) for cp, _ in cyr_lookalikes(font)),
         "cyrMissing": "".join(chr(c) for c in range(0x0410, 0x0450) if c not in cmap),
     }
 </script>
@@ -1332,6 +1412,37 @@ def font_info(data):
       document.querySelectorAll('.pv').forEach(el => { el.style.fontFamily = '"' + face.family + '", Inter, sans-serif'; });
     } catch (e) { msg('Алдаа гарлаа: ' + shortErr(e)); }
   }
+
+
+  // ----- feedback -----
+  const fbForm = $('fbForm');
+  fbForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const st = $('fbStatus'), btn = $('fbSend');
+    const message = $('fbMsg').value.trim();
+    st.className = 'status';
+    if (message.length < 3) { st.textContent = 'Саналаа бичнэ үү.'; st.classList.add('err'); $('fbMsg').focus(); return; }
+    btn.disabled = true; st.textContent = 'Илгээж байна…';
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          kind: (fbForm.querySelector('input[name=kind]:checked') || {}).value,
+          message, contact: $('fbContact').value.trim(), website: $('fbWeb').value,
+          font: info ? (info.family + ' ' + info.style) : ''
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        st.textContent = 'Баярлалаа! Таны санал хүрлээ.'; st.classList.add('ok');
+        $('fbMsg').value = ''; $('fbContact').value = '';
+      } else if (res.status === 429) {
+        st.textContent = 'Хэт олон удаа илгээлээ. Түр хүлээгээд дахин оролдоорой.'; st.classList.add('err');
+      } else { throw new Error(data.error || res.status); }
+    } catch (err) {
+      st.textContent = 'Илгээж чадсангүй. Дахин оролдоно уу.'; st.classList.add('err');
+    } finally { btn.disabled = false; }
+  });
 
   // ----- download -----
   let downloadsP;
