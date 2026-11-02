@@ -5,6 +5,6 @@
   "workers_dev": true,
   "preview_urls": false,
   "assets": {
-    "directory": "."
+    "directory": "./public"
   }
 }
