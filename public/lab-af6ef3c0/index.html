@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Өү · Туршилт — кирилл үсэг</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f6f3; --surface:#ffffff; --ink:#111113; --soft:#6b6b72; --faint:#a1a1a8;
+    --line:rgba(17,17,19,.08); --line2:rgba(17,17,19,.14);
+    --accent:#2f54eb; --accent-ink:#fff; --tile:#fafaf8; --warn:#9a5b00; --warn-bg:#fff6e5;
+    --shadow:0 1px 2px rgba(17,17,19,.04), 0 12px 40px -12px rgba(17,17,19,.10);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0d0d0f; --surface:#151518; --ink:#f3f3f5; --soft:#9d9da6; --faint:#6a6a73;
+      --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.14);
+      --accent:#7b93ff; --accent-ink:#0d0d0f; --tile:#1a1a1e; --warn:#f2c26b; --warn-bg:#2a2112;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 16px 48px -16px rgba(0,0,0,.6); }
+  }
+  *{box-sizing:border-box;margin:0}
+  html,body{background:var(--bg)}
+  body{color:var(--ink);font:15px/1.55 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+  body::before{content:"";position:fixed;inset:-20vh -10vw auto;height:70vh;pointer-events:none;z-index:0;
+    background:radial-gradient(40% 50% at 25% 40%, rgba(47,84,235,.10), transparent 70%),
+               radial-gradient(35% 45% at 80% 30%, rgba(255,140,90,.08), transparent 70%);filter:blur(10px)}
+  .wrap{position:relative;z-index:1;max-width:1040px;margin:0 auto;padding:22px 24px 80px}
+
+  nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:-.01em}
+  .logo{width:30px;height:30px;border-radius:9px;background:var(--ink);color:var(--bg);display:grid;place-items:center;
+    font:700 13px/1 Unbounded,sans-serif;letter-spacing:-.04em}
+  .engine{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--soft);padding:6px 12px;border:1px solid var(--line);border-radius:99px;background:var(--surface)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+  .engine.loading .dot{background:#e0a100;animation:pulse 1.2s ease-in-out infinite}
+  .engine.ready .dot{background:#22a06b}
+  .engine.err .dot{background:#e5484d}
+  @keyframes pulse{50%{opacity:.3}}
+
+  .hero{text-align:center;margin-bottom:40px;transition:all .4s ease}
+  h1{font:700 clamp(36px,6vw,64px)/1.02 Unbounded,sans-serif;letter-spacing:-.045em;margin-bottom:16px}
+  h1 em{font-style:normal;color:var(--accent)}
+  .lead{color:var(--soft);font-size:17px;max-width:520px;margin:0 auto}
+  body.loaded .hero{display:none}
+
+  .drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;
+    background:var(--surface);border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow);
+    padding:64px 24px;cursor:pointer;transition:transform .2s ease,border-color .2s ease;position:relative;overflow:hidden}
+  .drop::after{content:"";position:absolute;inset:10px;border:1.5px dashed var(--line2);border-radius:20px;pointer-events:none;transition:border-color .2s}
+  .drop:hover{transform:translateY(-2px)}
+  .drop.over::after,.drop:hover::after{border-color:var(--accent)}
+  .drop .icon{width:56px;height:56px;border-radius:16px;background:var(--tile);border:1px solid var(--line);display:grid;place-items:center;
+    font:700 22px/1 Unbounded,sans-serif;color:var(--accent);letter-spacing:-.05em}
+  .drop strong{font-size:17px;font-weight:600}
+  .drop small{color:var(--faint);font-size:13px;letter-spacing:.02em}
+  input[type=file]{display:none}
+  body.loaded .drop{flex-direction:row;gap:16px;padding:22px 28px;border-radius:22px;margin-bottom:16px;justify-content:flex-start;text-align:left}
+  body.loaded .drop::after{inset:7px;border-radius:16px}
+  body.loaded .drop .icon{width:44px;height:44px;border-radius:13px;font-size:17px;flex:none}
+  .drop .txt{display:flex;flex-direction:column;gap:6px;align-items:center}
+  body.loaded .drop .txt{gap:2px;align-items:flex-start}
+
+  .bar{display:none;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:20px;
+    padding:12px 12px 12px 18px;box-shadow:var(--shadow);margin-bottom:16px}
+  body.loaded .bar{display:flex}
+  .file{flex:1;min-width:0}
+  .file b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .file span{color:var(--soft);font-size:13px}
+  .btn{font:600 14px/1 Inter,sans-serif;border:0;border-radius:99px;padding:13px 20px;cursor:pointer;transition:transform .15s ease,opacity .15s}
+  .btn:active{transform:scale(.97)}
+  .ghost{background:transparent;color:var(--ink);border:1px solid var(--line2)}
+  .primary{background:var(--accent);color:var(--accent-ink);display:inline-flex;align-items:center;gap:8px}
+  .primary:disabled{opacity:.4;cursor:default}
+  .primary svg,.upl svg{width:16px;height:16px}
+  .count{font-weight:600;font-size:12.5px;padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.22);margin-left:2px;font-variant-numeric:tabular-nums}
+  @media (prefers-color-scheme: dark){ .count{background:rgba(0,0,0,.18)} }
+  .stat{margin-top:18px;font-size:14px;color:var(--soft);display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:99px;background:var(--surface);border:1px solid var(--line)}
+  .stat b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+  .stat[hidden]{display:none}
+  .upl{display:inline-flex;align-items:center;gap:8px}
+
+  .notice{display:none;font-size:13.5px;color:var(--warn);background:var(--warn-bg);border-radius:14px;padding:11px 16px;margin-bottom:16px}
+  .notice.show{display:block}
+
+  .stage{display:none;background:var(--surface);border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow);padding:10px}
+  body.loaded .stage{display:block}
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .tile{background:var(--tile);border-radius:20px;aspect-ratio:1/1.08;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+  .tile .g{font-size:clamp(72px,12vw,150px);line-height:1;padding-bottom:6%}
+  .tile .cap{position:absolute;left:0;right:0;bottom:14px;text-align:center;font-size:12px;color:var(--faint);letter-spacing:.01em}
+  .tile .cap i{font-style:normal;color:var(--soft)}
+  .tile.new::before{content:"";position:absolute;top:14px;right:14px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .sample{display:block;width:100%;border:0;outline:0;resize:none;background:transparent;color:var(--ink);
+    font-size:clamp(28px,4.4vw,48px);line-height:1.22;padding:28px 22px 22px;min-height:220px;font-family:Inter,sans-serif}
+  .foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 8px 4px 22px;flex-wrap:wrap}
+  .foot .hint{color:var(--faint);font-size:13px}
+  .msg{font-size:13px;color:var(--soft);min-height:18px;text-align:right;margin-top:10px}
+
+
+  .fb{margin-top:28px;background:var(--surface);border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow);padding:30px 30px 26px}
+  .fb h2{font:700 22px/1.2 Unbounded,sans-serif;letter-spacing:-.03em;margin-bottom:6px}
+  .fb .sub{color:var(--soft);font-size:14px;margin-bottom:18px}
+  .kinds{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;border:0;padding:0}
+  .kinds legend{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .kinds input{position:absolute;opacity:0;pointer-events:none}
+  .kinds label{font-size:14px;font-weight:500;padding:9px 16px;border-radius:99px;border:1px solid var(--line2);cursor:pointer;color:var(--soft);transition:.15s}
+  .kinds input:checked+label{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .kinds input:focus-visible+label{outline:2px solid var(--accent);outline-offset:2px}
+  .fb textarea,.fb input[type=text]{width:100%;font:inherit;font-size:15px;color:var(--ink);background:var(--tile);border:1px solid var(--line);border-radius:16px;padding:14px 16px;outline:0;transition:border-color .15s}
+  .fb textarea{min-height:120px;resize:vertical;margin-bottom:10px}
+  .fb textarea:focus,.fb input[type=text]:focus{border-color:var(--accent)}
+  .fb .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .fb .row input[type=text]{flex:1;min-width:220px}
+  .fb .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+  .fb .status{font-size:13.5px;color:var(--soft);margin-top:10px;min-height:20px}
+  .fb .status.ok{color:#22a06b}.fb .status.err{color:#e5484d}
+
+  .posts{margin-top:26px;border-top:1px solid var(--line);padding-top:22px;display:flex;flex-direction:column;gap:12px}
+  .posts h3{font-size:15px;font-weight:600;margin-bottom:2px}
+  .posts .empty{color:var(--faint);font-size:14px}
+  .post{background:var(--tile);border-radius:18px;padding:16px 18px}
+  .post .meta{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--faint);margin-bottom:6px;flex-wrap:wrap}
+  .post .chip{font-weight:600;font-size:12px;padding:3px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line);color:var(--soft)}
+  .post .chip.bug{color:#c2410c}.post .chip.idea{color:var(--accent)}
+  .post .text{white-space:pre-wrap;word-wrap:break-word;font-size:15px}
+  .post .reply{margin-top:10px;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:14px}
+  .post .reply b{font-weight:600}
+  .post .rep{margin-left:auto;background:none;border:0;color:var(--faint);font:inherit;font-size:12.5px;cursor:pointer;padding:4px 6px;border-radius:8px}
+  .post .rep:hover{color:#e5484d}
+  .more{align-self:center;margin-top:4px}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  nav .links{display:flex;align-items:center;gap:10px}
+  nav .navlink{font-size:13px;color:var(--soft);text-decoration:none;padding:6px 12px;border-radius:99px}
+  nav .navlink:hover{color:var(--ink);background:var(--surface)}
+
+  .beta{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:#e5484d;border-radius:99px;padding:3px 8px;margin-left:8px;vertical-align:middle}
+  .mapcard{display:none;margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow);padding:26px}
+  body.loaded .mapcard{display:block}
+  .mapcard h2{font:700 20px/1.2 Unbounded,sans-serif;letter-spacing:-.03em;margin-bottom:6px}
+  .mapcard .sub{color:var(--soft);font-size:14px;margin-bottom:16px}
+  .mapgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
+  .cell{background:var(--tile);border-radius:16px;padding:10px;display:flex;flex-direction:column;gap:8px;border:1.5px solid transparent}
+  .cell.on{border-color:var(--accent)}
+  .cell.has{opacity:.55}
+  .cell .top{display:flex;align-items:center;justify-content:space-between}
+  .cell .lbl{font-weight:600;font-size:14px}
+  .cell .tag{font-size:11px;color:var(--faint)}
+  .cell .g{font-size:56px;line-height:1.1;text-align:center;min-height:62px}
+  .cell select{width:100%;font:inherit;font-size:13px;padding:6px 8px;border-radius:10px;border:1px solid var(--line2);background:var(--surface);color:var(--ink)}
+  .tf{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+  .tf button{font:inherit;font-size:13px;padding:5px 0;border-radius:8px;border:1px solid var(--line2);background:var(--surface);color:var(--soft);cursor:pointer}
+  .tf button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .tf button:disabled{opacity:.35;cursor:default}
+  .palette{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 18px}
+  .pal{background:var(--tile);border-radius:12px;padding:6px 8px 4px;text-align:center;min-width:52px}
+  .pal .pg{font-size:34px;line-height:1.1}
+  .pal .pl{font-size:11px;color:var(--faint)}
+  .fauxnote{display:none;font-size:13.5px;color:var(--warn);background:var(--warn-bg);border-radius:12px;padding:10px 14px;margin-bottom:12px}
+  .fauxnote.show{display:block}
+  .mapbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  footer{margin-top:48px;text-align:center;color:var(--faint);font-size:12.5px}
+  footer .sep{margin:0 6px}
+  footer .by{color:var(--soft);font-weight:500}
+  @media (max-width:640px){
+    nav{margin-bottom:40px}
+    .tiles{grid-template-columns:repeat(2,1fr)}
+    .tile .g{font-size:24vw}
+    .bar{flex-wrap:wrap}
+    .bar .file{flex-basis:100%}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <div class="brand"><div class="logo">ӨҮ</div>Өү<span class="beta">Туршилт</span></div>
+    <div class="links">
+      <a class="navlink" href="/sanal">Санал хүсэлт</a>
+      <div class="engine loading" id="engine"><span class="dot"></span><span id="engineText">Бэлтгэж байна</span></div>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <h1>Фонтоо <em>монгол</em><br>болгоё.</h1>
+    <p class="lead">Ө ө Ү ү үсгийг фонтын өөрийн хэлбэрээс нь автоматаар үүсгэнэ. Файл тань таны төхөөрөмжөөс гарахгүй.</p>
+  </section>
+
+  <label class="drop" id="drop">
+    <div class="icon">Өү</div>
+    <div class="txt">
+      <strong>Фонтоо энд чирж оруулах</strong>
+      <small>эсвэл дарж сонгох · TTF · OTF · WOFF · WOFF2</small>
+    </div>
+    <input type="file" id="file" accept=".ttf,.otf,.woff,.woff2,font/*">
+  </label>
+
+  <div class="bar">
+    <div class="file"><b id="fname"></b><span id="fmeta"></span></div>
+    <button class="btn primary" id="dl" disabled>
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg>
+      <span id="dlText">Татах</span>
+    </button>
+  </div>
+
+  <div class="notice" id="notice"></div>
+
+  <section class="stage">
+    <div class="tiles">
+      <div class="tile new"><div class="g pv">Ө</div><div class="cap" id="c0"></div></div>
+      <div class="tile new"><div class="g pv">ө</div><div class="cap" id="c1"></div></div>
+      <div class="tile new"><div class="g pv">Ү</div><div class="cap" id="c2"></div></div>
+      <div class="tile new"><div class="g pv">ү</div><div class="cap" id="c3"></div></div>
+    </div>
+    <textarea class="sample pv" id="sample" spellcheck="false" rows="4">АБВГДЕЁЖЗИЙКЛМНОӨПРСТУҮФХЦЧШЩЪЫЬЭЮЯ
+МОНГОЛ ХЭЛ БИЧИГ · ӨГЛӨӨНИЙ НАР · ЖИЛИЙН ШИНЭ
+Монгол хэл бичиг</textarea>
+    <div class="foot"><span class="hint">Текстийг засаж туршиж болно</span></div>
+  </section>
+
+  <section class="mapcard" id="mapcard">
+    <h2>Кирилл үсэг</h2>
+    <p class="sub" id="mapSub">Фонтод байхгүй кирилл үсэг бүрт аль үсгийн хэлбэрийг ашиглахаа сонгоно. ↔ толин тусгал, ↕ урвуулах, ⟲ 180° эргүүлэх. Жижиг үсэг нь том үсгийнхээ хэлбэрийг автоматаар авна.</p>
+    <p class="fauxnote" id="fauxNote">Энэ фонтын латин үсгүүдэд кирилл хэлбэр зурагдсан (хуурамч кирилл) байна. Доорх жагсаалтаас аль үсэг ямар хэлбэртэйг хараад, кирилл үсэг бүрт тохирохыг нь сонгоорой.</p>
+    <div class="palette" id="palette" aria-label="Фонтын латин үсгүүд"></div>
+    <div class="mapgrid" id="mapgrid"></div>
+    <div class="mapbar">
+      <button class="btn ghost" type="button" id="mapAuto">Санал болгосноор</button>
+      <button class="btn ghost" type="button" id="mapClear">Бүгдийг арилгах</button>
+    </div>
+  </section>
+  <div class="msg" id="msg"></div>
+
+
+  <footer><a href="/sanal" style="color:inherit">Санал хүсэлт</a> <span class="sep">·</span> Фонтын лиценз өөрчлөхийг зөвшөөрдөг эсэхийг шалгаарай. <span class="sep">·</span> <span class="by">А.Хонгор</span></footer>
+</div>
+
+<script type="text/plain" id="pysrc">"""Add Mongolian Cyrillic Ө ө Ү ү to a font (TTF / OTF-CFF / WOFF).
+
+Ө/ө: copy of О/о (Cyrillic, else Latin O/o) plus a horizontal bar.
+Ү:   copy of Latin Y.
+ү:   copy of 'y' when the font's lowercase is caps-like, otherwise 'v' plus a
+     straight descender stem.
+"""
+import io
+import zipfile
+
+from fontTools.ttLib import TTFont
+from fontTools.pens.basePen import BasePen
+from fontTools.pens.recordingPen import RecordingPen
+from fontTools.pens.t2CharStringPen import T2CharStringPen
+from fontTools.pens.ttGlyphPen import TTGlyphPen
+from fontTools.pens.cu2quPen import Cu2QuPen
+from fontTools.pens.transformPen import TransformPen
+from fontTools.pens.reverseContourPen import ReverseContourPen
+import math
+
+TARGETS = {
+    0x04E8: "uni04E8",  # Ө
+    0x04E9: "uni04E9",  # ө
+    0x04AE: "uni04AE",  # Ү
+    0x04AF: "uni04AF",  # ү
+}
+
+
+class FlattenPen(BasePen):
+    """Collects contours as polygons (curves sampled)."""
+
+    def __init__(self, glyphSet=None, steps=16):
+        super().__init__(glyphSet)
+        self.contours, self.cur, self.steps = [], None, steps
+
+    def _moveTo(self, p):
+        self.cur = [p]
+        self.contours.append(self.cur)
+
+    def _lineTo(self, p):
+        self.cur.append(p)
+
+    def _curveToOne(self, p1, p2, p3):
+        p0 = self.cur[-1]
+        for i in range(1, self.steps + 1):
+            t = i / self.steps
+            u = 1 - t
+            self.cur.append((
+                u**3 * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t**3 * p3[0],
+                u**3 * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t**3 * p3[1],
+            ))
+
+    def _qCurveToOne(self, p1, p2):
+        p0 = self.cur[-1]
+        for i in range(1, self.steps + 1):
+            t = i / self.steps
+            u = 1 - t
+            self.cur.append((
+                u * u * p0[0] + 2 * u * t * p1[0] + t * t * p2[0],
+                u * u * p0[1] + 2 * u * t * p1[1] + t * t * p2[1],
+            ))
+
+    def _closePath(self):
+        pass
+
+    _endPath = _closePath
+
+
+def _polys(gs, name):
+    p = FlattenPen(gs)
+    gs[name].draw(p)
+    return [c for c in p.contours if len(c) > 2]
+
+
+def _area(poly):
+    a = 0.0
+    for i in range(len(poly)):
+        x0, y0 = poly[i]
+        x1, y1 = poly[(i + 1) % len(poly)]
+        a += x0 * y1 - x1 * y0
+    return a / 2
+
+
+def _hits(polys, axis, v):
+    """Coordinates where the line (x=v if axis=='x' else y=v) crosses edges."""
+    out = []
+    for poly in polys:
+        for i in range(len(poly)):
+            a, b = poly[i], poly[(i + 1) % len(poly)]
+            if axis == "y":
+                (x0, y0), (x1, y1) = a, b
+            else:
+                (y0, x0), (y1, x1) = a, b
+            if (y0 <= v < y1) or (y1 <= v < y0):
+                out.append(x0 + (v - y0) * (x1 - x0) / (y1 - y0))
+    return sorted(out)
+
+
+def _bbox(polys):
+    xs = [p[0] for c in polys for p in c]
+    ys = [p[1] for c in polys for p in c]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def _outer_sign(polys):
+    big = max(polys, key=lambda c: abs(_area(c)))
+    return 1 if _area(big) > 0 else -1
+
+
+def _rect(pen, x0, y0, x1, y1, sign):
+    pts = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]  # counter-clockwise
+    if sign < 0:
+        pts.reverse()
+    pts = [(round(x), round(y)) for x, y in pts]
+    pen.moveTo(pts[0])
+    for p in pts[1:]:
+        pen.lineTo(p)
+    pen.closePath()
+
+
+def _find(cmap, *chars):
+    for ch in chars:
+        if ord(ch) in cmap:
+            return cmap[ord(ch)]
+    return None
+
+
+def _stem_width(gs, cmap):
+    for ch in "lIi|":
+        n = _find(cmap, ch)
+        if not n:
+            continue
+        polys = _polys(gs, n)
+        if not polys:
+            continue
+        x0, y0, x1, y1 = _bbox(polys)
+        h = _hits(polys, "y", (y0 + y1) / 2)
+        if len(h) >= 2:
+            return h[1] - h[0]
+    return None
+
+
+def analyze(font):
+    """Default parameters + info about what the font has."""
+    cmap = font.getBestCmap()
+    gs = font.getGlyphSet()
+    info = {"has": {hex(c): c in cmap for c in TARGETS}}
+    os2 = font["OS/2"] if "OS/2" in font else None
+    cap = getattr(os2, "sCapHeight", 0) or 0
+    xh = getattr(os2, "sxHeight", 0) or 0
+    yn, Yn = _find(cmap, "y"), _find(cmap, "Y")
+    capslike = False
+    if yn and Yn:
+        if gs[yn].width == gs[Yn].width:
+            a, b = RecordingPen(), RecordingPen()
+            gs[yn].draw(a)
+            gs[Yn].draw(b)
+            capslike = a.value == b.value
+        if not capslike and cap and xh:
+            capslike = xh >= 0.9 * cap
+    info["capslike"] = capslike
+    return info
+
+
+class CubicContours(BasePen):
+    """Records contours as segment lists, quadratics converted to cubics."""
+
+    def __init__(self, glyphSet=None):
+        super().__init__(glyphSet)
+        self.contours = []
+
+    def _moveTo(self, p):
+        self.start = p
+        self.cur = p
+        self.segs = []
+        self.contours.append({"start": p, "segs": self.segs})
+
+    def _lineTo(self, p):
+        self.segs.append(("l", self.cur, p))
+        self.cur = p
+
+    def _curveToOne(self, p1, p2, p3):
+        self.segs.append(("c", self.cur, p1, p2, p3))
+        self.cur = p3
+
+    def _qCurveToOne(self, p1, p2):
+        p0 = self.cur
+        c1 = (p0[0] + 2 / 3 * (p1[0] - p0[0]), p0[1] + 2 / 3 * (p1[1] - p0[1]))
+        c2 = (p2[0] + 2 / 3 * (p1[0] - p2[0]), p2[1] + 2 / 3 * (p1[1] - p2[1]))
+        self._curveToOne(c1, c2, p2)
+
+    def _closePath(self):
+        if self.cur != self.start:
+            self.segs.append(("l", self.cur, self.start))
+        self.cur = self.start
+
+    _endPath = _closePath
+
+
+def _seg_pt(s, t):
+    if s[0] == "l":
+        (x0, y0), (x1, y1) = s[1], s[2]
+        return (x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)
+    p0, p1, p2, p3 = s[1:]
+    u = 1 - t
+    return tuple(u**3 * p0[i] + 3 * u * u * t * p1[i] + 3 * u * t * t * p2[i] + t**3 * p3[i] for i in (0, 1))
+
+
+def _seg_split(s, t):
+    if s[0] == "l":
+        m = _seg_pt(s, t)
+        return ("l", s[1], m), ("l", m, s[2])
+    p0, p1, p2, p3 = s[1:]
+    lerp = lambda a, b: (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+    a, b_, c = lerp(p0, p1), lerp(p1, p2), lerp(p2, p3)
+    d, e = lerp(a, b_), lerp(b_, c)
+    f = lerp(d, e)
+    return ("c", p0, a, d, f), ("c", f, e, c, p3)
+
+
+def _seg_roots(s, c):
+    """Parameters t in (0,1) where the segment crosses y=c."""
+    if s[0] == "l":
+        y0, y1 = s[1][1], s[2][1]
+        if (y0 - c) * (y1 - c) < 0:
+            return [(c - y0) / (y1 - y0)]
+        return []
+    ys = [p[1] for p in s[1:]]
+    if min(ys) >= c or max(ys) <= c:
+        return []
+    out, n = [], 48
+    f = lambda t: _seg_pt(s, t)[1] - c
+    prev_t, prev = 0.0, f(0.0)
+    for i in range(1, n + 1):
+        t = i / n
+        v = f(t)
+        if prev == 0 and 0 < prev_t < 1:
+            out.append(prev_t)
+        elif prev * v < 0:
+            lo, hi = prev_t, t
+            for _ in range(40):
+                mid = (lo + hi) / 2
+                if (f(lo) < 0) == (f(mid) < 0):
+                    lo = mid
+                else:
+                    hi = mid
+            out.append((lo + hi) / 2)
+        prev_t, prev = t, v
+    return out
+
+
+def _split_at_line(segs, c):
+    pieces = []
+    for s in segs:
+        ts = _seg_roots(s, c)
+        rest, base = s, 0.0
+        for t in ts:
+            local = (t - base) / (1 - base)
+            first, rest = _seg_split(rest, local)
+            pieces.append(first)
+            base = t
+        pieces.append(rest)
+    return pieces
+
+
+def _clip_half(contour, c, keep_above):
+    """Clip a closed contour to y>=c (keep_above) or y<=c. Straight edge on y=c."""
+    pieces = _split_at_line(contour["segs"], c)
+    inside = [((_seg_pt(p, 0.5)[1] >= c) if keep_above else (_seg_pt(p, 0.5)[1] <= c)) for p in pieces]
+    if all(inside):
+        return [pieces]
+    if not any(inside):
+        return []
+    n = len(pieces)
+    start = next(i for i in range(n) if inside[i] and not inside[i - 1])
+    out, cur = [], None
+    for k in range(n):
+        i = (start + k) % n
+        if inside[i]:
+            p = pieces[i]
+            if cur is None:
+                cur = []
+            elif cur and cur[-1][-1] != p[1]:
+                cur.append(("l", cur[-1][-1], p[1]))
+            cur.append(p)
+    if cur and cur[-1][-1] != cur[0][1]:
+        cur.append(("l", cur[-1][-1], cur[0][1]))
+    return [cur] if cur else []
+
+
+def _emit(pen, segs):
+    r = lambda p: (round(p[0]), round(p[1]))
+    pts = []
+    pen.moveTo(r(segs[0][1]))
+    last = r(segs[0][1])
+    for s in segs:
+        if s[0] == "l":
+            q = r(s[2])
+            if q != last:
+                pen.lineTo(q)
+                last = q
+        else:
+            pen.curveTo(r(s[2]), r(s[3]), r(s[4]))
+            last = r(s[4])
+    pen.closePath()
+
+
+def _flat(segs, steps=16):
+    pts = [segs[0][1]]
+    for s in segs:
+        if s[0] == "l":
+            pts.append(s[2])
+        else:
+            pts.extend(_seg_pt(s, i / steps) for i in range(1, steps + 1))
+    return pts
+
+
+def _inside(poly, x, y):
+    c = False
+    for i in range(len(poly)):
+        (x0, y0), (x1, y1) = poly[i - 1], poly[i]
+        if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
+            c = not c
+    return c
+
+
+def _bar_glyph(font, src, thick_pct, offset_pct, pen):
+    """O + bar, drawn without overlapping contours: the counter is split in two."""
+    gs = font.getGlyphSet()
+    cc = CubicContours(gs)
+    gs[src].draw(cc)
+    contours = [c for c in cc.contours if c["segs"]]
+    if not contours:
+        return
+    polys = [_flat(c["segs"]) for c in contours]
+    areas = [_area(p) for p in polys]
+    oi = max(range(len(polys)), key=lambda i: abs(areas[i]))
+    outer = 1 if areas[oi] > 0 else -1
+    x0, y0, x1, y1 = _bbox([polys[oi]])
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    # counter = the most deeply nested opposite-direction contour (plain O:
+    # the hole; outline/3D designs: the innermost hole; texture specks are
+    # too small or not nested deeper than the real counter)
+    big = [i for i in range(len(polys)) if abs(areas[i]) >= abs(areas[oi]) * 0.01]
+    def depth(i):
+        px, py = polys[i][0]
+        return sum(1 for j in big if j != i and abs(areas[j]) > abs(areas[i]) and _inside(polys[j], px, py))
+    # either direction: some outline/3D designs draw the counter dark
+    cands = [i for i in big if i != oi and abs(areas[i]) >= abs(areas[oi]) * 0.03]
+    # a real counter lies inside another contour; same-direction pieces that
+    # sit side by side (letters built from separate chunks) are not counters
+    cands = [i for i in cands if depth(i) >= 1]
+    ci = max(cands, key=lambda i: (depth(i), abs(areas[i]))) if cands else None
+    if ci is not None:
+        cxa, cya, cxb, cyb = _bbox([polys[ci]])
+        cx = (cxa + cxb) / 2
+        ch = _hits([polys[ci]], "x", cx)
+        if len(ch) < 2:
+            ci = None
+    if ci is not None:
+        inner_lo, inner_hi = ch[0], ch[-1]
+        allh = _hits([polys[i] for i in big], "x", cx)
+        above = [y for y in allh if y > inner_hi + 0.5]
+        top_stroke = (min(above) - inner_hi) if above else (y1 - inner_hi)
+        gap = None
+    else:
+        # counter formed by the gap between separate pieces
+        same = [polys[i] for i in big if (areas[i] > 0) == (outer > 0)]
+        gx0, gy0, gx1, gy1 = _bbox(same)
+        gcx, gcy = (gx0 + gx1) / 2, (gy0 + gy1) / 2
+
+        def runs(axis, v):
+            iv = []
+            for p in same:
+                h = _hits([p], axis, v)
+                iv += [(h[i], h[i + 1]) for i in range(0, len(h) - 1, 2)]
+            iv.sort()
+            out = []
+            for a_, b_ in iv:
+                if out and a_ <= out[-1][1]:
+                    out[-1] = (out[-1][0], max(out[-1][1], b_))
+                else:
+                    out.append((a_, b_))
+            return out
+
+        def gap_at(rr, v):
+            for k in range(len(rr) - 1):
+                if rr[k][1] <= v <= rr[k + 1][0]:
+                    return rr[k][1], rr[k + 1][0], rr[k + 1][1] - rr[k + 1][0]
+            return None
+
+        vg = gap_at(runs("x", gcx), gcy)
+        if not vg:
+            for c in contours:
+                _emit(pen, c["segs"])
+            return
+        inner_lo, inner_hi, top_stroke = vg
+        gap = (gx1 - gx0)
+    counter_h = inner_hi - inner_lo
+    t = min(top_stroke, counter_h * 0.4) * thick_pct / 100.0
+    t = max(4, min(t, counter_h * 0.8))
+    mid = (inner_lo + inner_hi) / 2 + counter_h * offset_pct / 100.0
+    lo, hi = mid - t / 2, mid + t / 2
+    for i, c in enumerate(contours):
+        if i != ci:
+            _emit(pen, c["segs"])
+    if ci is None:
+        hg = gap_at(runs("y", mid), gcx)
+        if hg:
+            d = gap * 0.02
+            _rect(pen, hg[0] - d, lo, hg[1] + d, hi, outer)
+        return
+    for part in _clip_half(contours[ci], hi, True) + _clip_half(contours[ci], lo, False):
+        if len(part) >= 2:
+            _emit(pen, part)
+
+
+def _stem_glyph(font, src, depth_pct, pen, fork=False):
+    # fork: False (ү descender), "v" (squeeze V), "x" (upper half of X)
+    """'v' + straight stem merged into the outline.
+    fork=False: stem goes below the baseline (Cyrillic ү).
+    fork=True:  the V is squeezed into the upper part and the stem stands on
+                the baseline (a straight Y / Ү)."""
+    gs = font.getGlyphSet()
+    cmap = font.getBestCmap()
+    cc = CubicContours(gs)
+    gs[src].draw(cc)
+    contours = [c for c in cc.contours if c["segs"]]
+    if not contours:
+        return
+    sl = _slant(font)
+    if sl:  # work upright, re-slant on output
+        dk = lambda p: (p[0] - sl * p[1], p[1])
+        for ct in contours:
+            ct["segs"] = [(sg[0],) + tuple(dk(p) for p in sg[1:]) for sg in ct["segs"]]
+        pen = TransformPen(pen, (1, 0, sl, 1, 0, 0))
+    polys = [_flat(c["segs"]) for c in contours]
+    x0, y0, x1, y1 = _bbox(polys)
+    sw = _stem_width(gs, cmap) or (x1 - x0) * 0.15
+    if fork == "x":
+        H = y1 - y0
+        areas0 = [_area(p) for p in polys]
+        oi0 = max(range(len(polys)), key=lambda i: abs(areas0[i]))
+        band = []
+        for k in range(0, 81):
+            y = y0 + H * (0.25 + 0.5 * k / 80)
+            h = _hits([polys[oi0]], "y", y)
+            if len(h) == 2:
+                band.append((h[1] - h[0], y))
+        if band:
+            ys = [y for _, y in band]
+            c = (min(ys) + max(ys)) / 2
+        else:
+            c = y0 + H * 0.5
+        c = c + H * (depth_pct - 100) / 100.0 * 0.3
+        newc = []
+        for ct in contours:
+            for part in _clip_half(ct, c, True):
+                if len(part) >= 2:
+                    newc.append({"start": part[0][1], "segs": part})
+        contours = newc
+        desc = y0
+        polys = [_flat(ct["segs"]) for ct in contours]
+        x0, y0, x1, y1 = _bbox(polys)
+    elif fork:
+        H = y1 - y0
+        yk = y1 - H * 0.12           # keep the top (serifs) untouched
+        c = y0 + H * (depth_pct / 100.0) * 0.42
+        k = (yk - c) / (yk - y0)
+        fy = lambda y: y if y >= yk else c + (y - y0) * k
+        mp = lambda p: (p[0], fy(p[1]))
+        for ct in contours:
+            ct["segs"] = [(sg[0],) + tuple(mp(p) for p in sg[1:]) for sg in ct["segs"]]
+        desc = y0
+        polys = [_flat(ct["segs"]) for ct in contours]
+        x0, y0, x1, y1 = _bbox(polys)
+    else:
+        pn = _find(cmap, "p", "q")
+        upm = font["head"].unitsPerEm
+        desc = _bbox(_polys(gs, pn))[1] if pn else None
+        if desc is None or desc > -0.08 * upm:   # font without real descenders
+            desc = -0.2 * upm
+        desc = y0 + (desc - y0) * depth_pct / 100.0
+    # cut the outline where it is about one stem wide, then hang the stem
+    # from that flat edge (no overlapping contours)
+    areas = [_area(p) for p in polys]
+    oi = max(range(len(polys)), key=lambda i: abs(areas[i]))
+    H = y1 - y0
+    cut = y0
+    for k in range(0, 121):
+        y = y0 + 0.5 + H * 0.6 * k / 120
+        h = _hits([polys[oi]], "y", y)
+        if len(h) == 2 and h[1] - h[0] >= sw * 0.95:
+            cut = y
+            break
+        if len(h) > 2:
+            break
+        cut = y
+    if cut > y0 + 1:
+        parts = []
+        for i, ct in enumerate(contours):
+            for part in _clip_half(ct, cut, True):
+                if len(part) >= 2:
+                    parts.append((i == oi, part))
+    else:
+        cut = y0
+        parts = [(i == oi, ct["segs"]) for i, ct in enumerate(contours)]
+    done = False
+    for is_outer, part in parts:
+        if not is_outer or done:
+            continue
+        best = None
+        for si, sg in enumerate(part):
+            if sg[0] == "l" and abs(sg[1][1] - cut) < 1 and abs(sg[2][1] - cut) < 1:
+                L = abs(sg[2][0] - sg[1][0])
+                if best is None or L > best[1]:
+                    best = (si, L)
+        if best is None:
+            continue
+        si, width = best
+        a_, b_ = part[si][1], part[si][2]
+        w = min(width, max(sw * 0.95, width * 0.6)) if width >= sw * 0.95 else sw * 0.95
+        m_ = (a_[0] + b_[0]) / 2
+        d = 1 if b_[0] > a_[0] else -1
+        p1, p2 = (m_ - d * w / 2, a_[1]), (m_ + d * w / 2, b_[1])
+        part[si:si + 1] = [("l", a_, p1), ("l", p1, (p1[0], desc)), ("l", (p1[0], desc), (p2[0], desc)),
+                           ("l", (p2[0], desc), p2), ("l", p2, b_)]
+        done = True
+    for _, part in parts:
+        _emit(pen, part)
+    if not done:  # last resort: separate stem rectangle
+        cx_ = (x0 + x1) / 2
+        _rect(pen, cx_ - sw / 2, desc, cx_ + sw / 2, cut + sw * 0.3, 1 if areas[oi] > 0 else -1)
+
+
+
+
+def _slant(font):
+    """Horizontal shift per unit of height (positive = leaning right)."""
+    cache = getattr(font, "_mn_slant", None)
+    if cache is not None:
+        return cache
+    s = 0.0
+    try:
+        ang = font["post"].italicAngle
+        if abs(ang) > 1:
+            s = math.tan(math.radians(-ang))
+    except Exception:
+        pass
+    if not s:
+        gs = font.getGlyphSet()
+        cmap = font.getBestCmap()
+        for ch in "I":
+            n = _find(cmap, ch)
+            if not n:
+                continue
+            polys = _polys(gs, n)
+            if not polys:
+                continue
+            x0, y0, x1, y1 = _bbox(polys)
+            ya, yb = y0 + (y1 - y0) * 0.25, y0 + (y1 - y0) * 0.75
+            ha, hb = _hits(polys, "y", ya), _hits(polys, "y", yb)
+            if len(ha) >= 2 and len(hb) >= 2:
+                ma, mb = (ha[0] + ha[-1]) / 2, (hb[0] + hb[-1]) / 2
+                est = (mb - ma) / (yb - ya)
+                if math.tan(math.radians(3)) < abs(est) < math.tan(math.radians(25)):
+                    s = est
+                break
+    font._mn_slant = s
+    return s
+
+
+def _contours_of(font, name, slant):
+    gs = font.getGlyphSet()
+    cc = CubicContours(gs)
+    gs[name].draw(cc)
+    cs = [c for c in cc.contours if c["segs"]]
+    if slant:
+        dk = lambda p: (p[0] - slant * p[1], p[1])
+        for ct in cs:
+            ct["segs"] = [(sg[0],) + tuple(dk(p) for p in sg[1:]) for sg in ct["segs"]]
+    return cs
+
+
+def _outer_run(polys, oi, y):
+    h = _hits([polys[oi]], "y", y)
+    return (h[0], h[-1]) if len(h) >= 2 else None, len(h)
+
+
+def _compose_fork(font, top_src, stem_src, depth_pct, pen, mode):
+    """Ү assembled from real glyph parts: upper part of V (mode 'v', squeezed
+    upward) or X (mode 'x'), lower part of I. Keeps outline/shadow/texture
+    styling because nothing is drawn from scratch. Returns False if it
+    could not be done."""
+    sl = _slant(font)
+    top = _contours_of(font, top_src, sl)
+    stem = _contours_of(font, stem_src, sl)
+    if not top or not stem:
+        return False
+    tp = [_flat(c["segs"]) for c in top]
+    ta = [_area(p) for p in tp]
+    toi = max(range(len(tp)), key=lambda i: abs(ta[i]))
+    x0, y0, x1, y1 = _bbox(tp)
+    H = y1 - y0
+    sp = [_flat(c["segs"]) for c in stem]
+    sa = [_area(p) for p in sp]
+    soi = max(range(len(sp)), key=lambda i: abs(sa[i]))
+    sx0, sy0, sx1, sy1 = _bbox(sp)
+    srun, _ = _outer_run(sp, soi, (sy0 + sy1) / 2)
+    if not srun:
+        return False
+    sw = srun[1] - srun[0]
+    if mode == "v":
+        yk = y1 - H * 0.12
+        c = y0 + H * (depth_pct / 100.0) * 0.42
+        k = (yk - c) / (yk - y0)
+        fy = lambda y: y if y >= yk else c + (y - y0) * k
+        for ct in top:
+            ct["segs"] = [(sg[0],) + tuple((p[0], fy(p[1])) for p in sg[1:]) for sg in ct["segs"]]
+        tp = [_flat(c["segs"]) for c in top]
+        bx0, by0, bx1, by1 = _bbox(tp)
+        cut = None
+        for kk in range(0, 121):
+            y = by0 + 0.5 + (by1 - by0) * 0.6 * kk / 120
+            run, n = _outer_run(tp, toi, y)
+            if n > 2:
+                break
+            if n == 2:
+                cut = y
+                if run[1] - run[0] >= sw * 0.95:
+                    break
+        if cut is None:  # ragged/notched tip: take the outer extent near the bottom
+            cut = by0 + (by1 - by0) * 0.04
+    else:
+        band = []
+        for kk in range(0, 81):
+            y = y0 + H * (0.25 + 0.5 * kk / 80)
+            run, n = _outer_run(tp, toi, y)
+            if n == 2:
+                band.append(y)
+        cut = (min(band) + max(band)) / 2 if band else y0 + H * 0.5
+        cut += H * (depth_pct - 100) / 100.0 * 0.3
+    run, n = _outer_run(tp, toi, cut)
+    if not run or cut <= sy0 + 1 or cut >= sy1 - 1:
+        return False
+    if run[1] - run[0] > sw * 1.6:  # extent spans two prongs: centre an I-wide neck
+        m_ = (run[0] + run[1]) / 2
+        run = (m_ - sw / 2, m_ + sw / 2)
+    # neck narrower than the I: slim the I down to fit
+    neck = run[1] - run[0]
+    kx = max(0.4, neck / sw) if neck < sw * 0.9 else 1.0
+    # centre the stem on the letter's own axis: whole-glyph bounding boxes of
+    # V/X and I carry the same shadow/extrusion, so their centres line up
+    scx = (sx0 + sx1) / 2
+    tcx = (x0 + x1) / 2
+    for ct in stem:
+        ct["segs"] = [(sg[0],) + tuple((tcx + (p[0] - scx) * kx, p[1]) for p in sg[1:]) for sg in ct["segs"]]
+    if sl:
+        pen = TransformPen(pen, (1, 0, sl, 1, 0, 0))
+    for ct in top:
+        for part in _clip_half(ct, cut, True):
+            if len(part) >= 2:
+                _emit(pen, part)
+    for ct in stem:
+        for part in _clip_half(ct, cut, False):
+            if len(part) >= 2:
+                _emit(pen, part)
+    return True
+
+
+# 16x20 silhouettes of Y and Ч from common fonts. Used to spot fonts whose
+# "Y" slot holds a Ч-like shape (faux-Cyrillic display fonts).
+_TPL_Y = [
+    '1111100000011111/0111100000011110/0111110000111110/0011110000111100/0011111001111100/0001111001111000/0001111111111000/0000111111110000/0000111111110000/0000011111100000/0000011111100000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000',
+    '1110000000000111/0111000000001110/0011000000001100/0011100000011100/0001110000111000/0000110000110000/0000111001110000/0000011111100000/0000011111100000/0000001111000000/0000000110000000/0000000110000000/0000000110000000/0000000110000000/0000000110000000/0000000110000000/0000000110000000/0000000110000000/0000000110000000/0000000110000000',
+    '1111000000001111/0111100000011110/0111100000011110/0011110000111100/0011110000111100/0001111001111000/0001111001111000/0000111111110000/0000111111110000/0000011111100000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000',
+    '1111111100011111/1111111100011111/0011110000000100/0011111000001100/0001111000001000/0001111100011000/0000111100010000/0000111110110000/0000011110100000/0000011111100000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000111111110000/0000111111110000',
+    '1111111100011111/0011110000000100/0011110000001100/0001111000001100/0001111000011000/0001111000011000/0000111100010000/0000111100110000/0000011110100000/0000011111100000/0000001111100000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000111111110000',
+    '1111100000011111/0111100000011110/0111110000111110/0011110000111100/0011111001111100/0001111001111000/0001111111111000/0000111111110000/0000111111110000/0000011111100000/0000011111100000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000/0000001111000000',
+]
+_TPL_CHE = [
+    '1111100000011111/1111100000011111/1111100000011111/1111100000011111/1111100000011111/1111100000011111/1111100000011111/1111100000011111/1111111111111111/0111111111111111/0111111111111111/0011111111111111/0000000000011111/0000000000011111/0000000000011111/0000000000011111/0000000000011111/0000000000011111/0000000000011111/0000000000011111',
+    '1110000000000111/1110000000000111/1110000000000111/1110000000000111/1110000000000111/1110000000000111/1110000000000111/1110000000000111/0111000000000111/0111110000000111/0011111111111111/0000111111111111/0000000000000111/0000000000000111/0000000000000111/0000000000000111/0000000000000111/0000000000000111/0000000000000111/0000000000000111',
+    '1111000000001111/1111000000001111/1111000000001111/1111000000001111/1111000000001111/1111000000001111/1111000000001111/1111000000001111/1111000000001111/1111100000001111/0111111111111111/0111111111111111/0011111111101111/0000000000001111/0000000000001111/0000000000001111/0000000000001111/0000000000001111/0000000000001111/0000000000001111',
+    '1111111001111111/1111111001111111/0011100000011100/0011100000011100/0011100000011100/0011100000011100/0011100000011100/0011100000011100/0011110000011100/0011110000011100/0001111111111100/0000011111111100/0000000000011100/0000000000011100/0000000000011100/0000000000011100/0000000000011100/0000000000011100/0000000001111111/0000000001111111',
+    '1111111001111111/0011100000011100/0011100000011100/0011100000011100/0011100000011100/0011100000011100/0011100000011100/0011100000011100/0011100000011100/0011100000011100/0011110000111100/0001111111111100/0001111111011100/0000000000011100/0000000000011100/0000000000011100/0000000000011100/0000000000011100/0000000000011100/0000000001111111',
+    '1111100000011111/1111100000011111/1111100000011111/1111100000011111/1111100000011111/1111100000011111/1111100000011111/1111100000011111/1111111111111111/0111111111111111/0111111111111111/0011111111111111/0000000000011111/0000000000011111/0000000000011111/0000000000011111/0000000000011111/0000000000011111/0000000000011111/0000000000011111',
+]
+
+
+def _silhouette(gs, name, slant=0.0, gw=16, gh=20, holes=False):
+    polys = _polys(gs, name)
+    if not polys:
+        return None
+    if slant:
+        polys = [[(x - slant * y, y) for x, y in p] for p in polys]
+    areas = [_area(p) for p in polys]
+    o = max(range(len(polys)), key=lambda i: abs(areas[i]))
+    sg = areas[o] > 0
+    S = [p for p, a in zip(polys, areas) if (a > 0) == sg and abs(a) > abs(areas[o]) * 0.02]
+    x0, y0, x1, y1 = _bbox(S)
+    if holes:  # even-odd fill of all larger contours (shows counters)
+        S = [p for p, a in zip(polys, areas) if abs(a) > abs(areas[o]) * 0.02]
+        return _eo_grid(S, x0, y0, x1, y1, gw, gh)
+    rows = []
+    for r in range(gh):
+        y = y1 - (y1 - y0) * (r + 0.5) / gh
+        iv = []
+        for p in S:
+            h = _hits([p], "y", y)
+            iv += [(h[i], h[i + 1]) for i in range(0, len(h) - 1, 2)]
+        row = ""
+        for c in range(gw):
+            x = x0 + (x1 - x0) * (c + 0.5) / gw
+            row += "1" if any(a <= x <= b for a, b in iv) else "0"
+        rows.append(row)
+    return rows
+
+
+def _eo_grid(S, x0, y0, x1, y1, gw, gh):
+    rows = []
+    for r in range(gh):
+        y = y1 - (y1 - y0) * (r + 0.5) / gh
+        h = _hits(S, "y", y)
+        iv = [(h[i], h[i + 1]) for i in range(0, len(h) - 1, 2)]
+        rows.append("".join("1" if any(a <= x0 + (x1 - x0) * (c + 0.5) / gw <= b for a, b in iv) else "0"
+                            for c in range(gw)))
+    return rows
+
+
+def _iou(a, b):
+    inter = uni = 0
+    for r1, r2 in zip(a, b):
+        for c1, c2 in zip(r1, r2):
+            if c1 == "1" or c2 == "1":
+                uni += 1
+                if c1 == "1" and c2 == "1":
+                    inter += 1
+    return inter / uni if uni else 0.0
+
+
+def _y_vs_che(font, name):
+    """(similarity to Y, similarity to Ч) of a glyph's silhouette."""
+    g = _silhouette(font.getGlyphSet(), name, _slant(font))
+    if not g:
+        return 0.0, 0.0
+    sy = max(_iou(g, t.split("/")) for t in _TPL_Y)
+    sc = max(_iou(g, t.split("/")) for t in _TPL_CHE)
+    return sy, sc
+
+def _symmetry(gs, name, slant=0.0):
+    """0..1: how mirror-symmetric (left/right) the glyph's filled area is
+    (after removing the font's slant)."""
+    polys = _polys(gs, name)
+    if not polys:
+        return 0.0
+    if slant:
+        polys = [[(x - slant * y, y) for x, y in p] for p in polys]
+    x0, y0, x1, y1 = _bbox(polys)
+    ax = x0 + x1
+    tot = ov = 0.0
+    rows = 48
+    for k in range(rows):
+        y = y0 + (y1 - y0) * (k + 0.5) / rows
+        h = _hits(polys, "y", y)
+        iv = [(h[i], h[i + 1]) for i in range(0, len(h) - 1, 2)]
+        mv = [(ax - b, ax - a) for a, b in iv]
+        for a, b in iv:
+            tot += b - a
+            for c, d in mv:
+                ov += max(0.0, min(b, d) - max(a, c))
+    return ov / tot if tot else 0.0
+
+
+def plan_ue(font, opts=None):
+    """Decide how to make Ү and ү. Returns ((kind, src), (kind, src), stats)."""
+    opts = opts or {}
+    cmap = font.getBestCmap()
+    gs = font.getGlyphSet()
+    capslike = analyze(font)["capslike"]
+    Y, y, V, v, X, x = (_find(cmap, ch) for ch in "YyVvXx")
+    st = {}
+    for k, n in zip("Yy", (Y, y)):
+        st[k] = _y_vs_che(font, n) if n else (0.0, 0.0)
+
+    def pick(cY, cV, cX, key):
+        # a "Y" whose silhouette looks more like Ч than like Y is not usable
+        if cY:
+            sy, sc = st[key]
+            if not (sc > sy + 0.05):
+                return ("copy", cY)
+        if cV:
+            return ("fork", cV)
+        if cX:
+            return ("xfork", cX)
+        return ("copy", cY) if cY else None
+
+    um = opts.get("uUMode", "auto")
+    if um == "fork" and V:
+        up = ("fork", V)
+    elif um == "xfork" and X:
+        up = ("xfork", X)
+    elif um == "Y" and Y:
+        up = ("copy", Y)
+    else:
+        up = pick(Y, V, X, "Y")
+
+    lm = opts.get("ueMode", "auto")
+    if lm == "auto":
+        lo = pick(y, v, x, "y") if capslike else (("stem", v) if v else None)
+    elif lm == "y" and y:
+        lo = ("copy", y)
+    elif lm == "Y" and up:
+        lo = up
+    elif lm == "vfork" and v:
+        lo = ("fork", v)
+    elif lm == "xfork" and x:
+        lo = ("xfork", x)
+    elif v:
+        lo = ("stem", v)
+    else:
+        lo = ("copy", y) if y else None
+    return up, lo, st
+
+
+
+# Cyrillic letters drawn exactly like a Latin one
+LOOKALIKES = {
+    0x0410: "A", 0x0412: "B", 0x0415: "E", 0x041A: "K", 0x041C: "M", 0x041D: "H",
+    0x041E: "O", 0x0420: "P", 0x0421: "C", 0x0422: "T", 0x0425: "X",
+    0x0430: "a", 0x0435: "e", 0x043E: "o", 0x0440: "p", 0x0441: "c", 0x0443: "y", 0x0445: "x",
+}
+
+
+
+# ---------- manual Cyrillic map (beta) ----------
+# Mongolian Cyrillic uppercase letters (Ө Ү are built separately)
+MN_UPPER = [0x0410, 0x0411, 0x0412, 0x0413, 0x0414, 0x0415, 0x0401, 0x0416, 0x0417, 0x0418,
+            0x0419, 0x041A, 0x041B, 0x041C, 0x041D, 0x041E, 0x041F, 0x0420, 0x0421, 0x0422,
+            0x0423, 0x0424, 0x0425, 0x0426, 0x0427, 0x0428, 0x0429, 0x042A, 0x042B, 0x042C,
+            0x042D, 0x042E, 0x042F]
+# default ideas: (source character, transform[, second source])
+MAP_IDEAS = {
+    0x0410: ("A", "none"), 0x0412: ("B", "none"), 0x0415: ("E", "none"), 0x041A: ("K", "none"),
+    0x041C: ("M", "none"), 0x041D: ("H", "none"), 0x041E: ("O", "none"), 0x0420: ("P", "none"),
+    0x0421: ("C", "none"), 0x0422: ("T", "none"), 0x0425: ("X", "none"), 0x0423: ("Y", "none"),
+    0x042F: ("R", "mirror"), 0x0418: ("N", "mirror"), 0x0419: ("N", "mirror"), 0x0413: ("L", "flip"),
+    0x041F: ("U", "flip"), 0x042C: ("P", "flip"), 0x0417: ("3", "none"), 0x041B: ("V", "flip"),
+    0x042D: ("C", "mirror"), 0x0401: ("\u00cb", "none"), 0x042B: ("P", "flip", "I"),
+}
+LOWER_LOOK = {0x0430: "a", 0x0435: "e", 0x043E: "o", 0x0440: "p", 0x0441: "c", 0x0443: "y", 0x0445: "x"}
+
+
+def map_palette(font):
+    """Glyphs the user may pick from: Latin letters, digits, accented E."""
+    cmap = font.getBestCmap()
+    chars = [chr(c) for c in range(65, 91)] + [chr(c) for c in range(97, 123)] + \
+            [chr(c) for c in range(48, 58)] + ["\u00cb", "\u00eb"]
+    return [[ch, cmap[ord(ch)]] for ch in chars if ord(ch) in cmap]
+
+
+def map_suggest(font):
+    """For each Mongolian uppercase letter: whether the font has it, and an idea."""
+    cmap = font.getBestCmap()
+    faux = False
+    try:
+        sy, sc = plan_ue(font)[2].get("Y", (0, 0))
+        faux = sc > sy + 0.05
+    except Exception:
+        pass
+    out = []
+    for cp in MN_UPPER:
+        has = cp in cmap
+        idea = MAP_IDEAS.get(cp)
+        sug = None
+        if not has and idea and ord(idea[0]) in cmap and not (faux and idea[0].isalpha()):
+            sug = {"src": idea[0], "t": idea[1]}
+            if len(idea) > 2 and ord(idea[2]) in cmap:
+                sug["src2"] = idea[2]
+        out.append({"cp": cp, "ch": chr(cp), "has": has, "sug": sug})
+    return {"letters": out, "faux": faux}
+
+
+def _map_glyph(font, src, t, src2, pen):
+    gs = font.getGlyphSet()
+    w = gs[src].width
+    polys = _polys(gs, src)
+    y0, y1 = (_bbox(polys)[1], _bbox(polys)[3]) if polys else (0, 0)
+    mats = {"none": (1, 0, 0, 1, 0, 0), "mirror": (-1, 0, 0, 1, w, 0),
+            "flip": (1, 0, 0, -1, 0, y0 + y1), "rot": (-1, 0, 0, -1, w, y0 + y1)}
+    m = mats.get(t, mats["none"])
+    target = ReverseContourPen(pen) if m[0] * m[3] < 0 else pen
+    gs[src].draw(TransformPen(target, m))
+    if src2 and src2 in gs:
+        gs[src2].draw(TransformPen(pen, (1, 0, 0, 1, w, 0)))
+        w += gs[src2].width
+    return w
+
+def cyr_lookalikes(font, st=None):
+    """[(codepoint, glyph)] for missing Cyrillic letters that can reuse a Latin
+    glyph. Empty for faux-Cyrillic fonts, whose Latin slots hold other shapes."""
+    cmap = font.getBestCmap()
+    if st is None:
+        st = plan_ue(font)[2]
+    sy, sc = st.get("Y", (0.0, 0.0))
+    if sc > sy + 0.05:
+        return []
+    out = []
+    for cp, lat in LOOKALIKES.items():
+        if cp not in cmap and ord(lat) in cmap:
+            if cp == 0x0443 and "y" in st and st["y"][1] > st["y"][0] + 0.05:
+                continue
+            out.append((cp, cmap[ord(lat)]))
+    return out
+
+def _copy(font, src, pen):
+    font.getGlyphSet()[src].draw(pen)
+
+
+def _rename(font, family):
+    name = font["name"]
+    old = (name.getDebugName(16) or name.getDebugName(1) or "").strip()
+    sub = (name.getDebugName(17) or name.getDebugName(2) or "Regular").strip()
+    ps = (family + "-" + sub).replace(" ", "")
+    for rec in list(name.names):
+        nid = rec.nameID
+        try:
+            s = rec.toUnicode()
+        except Exception:
+            continue
+        if nid in (1, 16):
+            new = family
+        elif nid == 4:
+            new = s.replace(old, family, 1) if old and old in s else family + " " + sub
+        elif nid == 6:
+            new = ps
+        elif nid == 3:
+            new = s.replace(old, family) if old and old in s else ps
+        else:
+            continue
+        name.setName(new, nid, rec.platformID, rec.platEncID, rec.langID)
+    if "CFF " in font:
+        cff = font["CFF "].cff
+        cff.fontNames = [ps]
+        td = cff.topDictIndex[0]
+        td.rawDict["FamilyName"] = family
+        td.FamilyName = family
+        td.FullName = family + " " + sub
+    return ps
+
+
+def build(data, opts):
+    """data: font bytes. opts: dict. Returns (bytes, ext, report)."""
+    font = TTFont(io.BytesIO(data))
+    flavor = font.flavor
+    font.flavor = None
+    cmap = font.getBestCmap()
+    gs = font.getGlyphSet()
+    is_cff = "CFF " in font
+    if is_cff and hasattr(font["CFF "].cff.topDictIndex[0], "ROS"):
+        raise ValueError("CID-keyed CFF фонт дэмжигдэхгүй.")
+    if not is_cff and "glyf" not in font:
+        raise ValueError("Энэ фонтын формат дэмжигдэхгүй (glyf эсвэл CFF хүснэгт алга).")
+    info = analyze(font)
+    overwrite = opts.get("overwrite", False)
+
+    src_O = _find(cmap, "О", "O")
+    src_o = _find(cmap, "о", "o")
+    # faux-Cyrillic fonts may put something else (e.g. Ф) in the "o" slot
+    if src_o and src_O and src_o != src_O and ord("\u043e") not in cmap:
+        so, sO = _silhouette(gs, src_o, holes=True), _silhouette(gs, src_O, holes=True)
+        po, pO = _polys(gs, src_o), _polys(gs, src_O)
+        same_h = po and pO and (_bbox(po)[3] - _bbox(po)[1]) >= 0.85 * (_bbox(pO)[3] - _bbox(pO)[1])
+        if so and sO and same_h and _iou(so, sO) < 0.8:
+            src_o = src_O
+    src_Y = _find(cmap, "Y")
+    report, plan = [], []
+    if src_O:
+        plan.append((0x04E8, "bar", src_O, opts.get("barU", 85), opts.get("offU", 0)))
+    if src_o:
+        plan.append((0x04E9, "bar", src_o, opts.get("barL", 85), opts.get("offL", 0)))
+    up, lo, st = plan_ue(font, opts)
+    mapped = cyr_lookalikes(font, st)
+    if up:
+        plan.append((0x04AE, up[0], up[1], opts.get("fork", 100)))
+    if lo:
+        plan.append((0x04AF, lo[0], lo[1],
+                     opts.get("fork", 100) if lo[0] in ("fork", "xfork") else opts.get("depth", 100)))
+
+    order = list(font.getGlyphOrder())
+    new_glyphs = {}
+    for item in plan:
+        cp, kind, src = item[0], item[1], item[2]
+        if cp in cmap and not overwrite:
+            report.append(f"{chr(cp)}: фонтод аль хэдийн байгаа тул алгаслаа")
+            continue
+        gname = TARGETS[cp]
+        if gname in order and cmap.get(cp) != gname:
+            gname = gname + ".mn"
+        width = gs[src].width
+        if is_cff:
+            pen = T2CharStringPen(width, gs)
+            draw_pen = pen
+        else:
+            pen = TTGlyphPen(gs)
+            draw_pen = Cu2QuPen(pen, max_err=1.0, reverse_direction=False)
+        if kind == "bar":
+            _bar_glyph(font, src, item[3], item[4], draw_pen)
+        elif kind == "stem":
+            _stem_glyph(font, src, item[3], draw_pen)
+        elif kind in ("fork", "xfork"):
+            stem_src = _find(cmap, "I", "l", "\u0406")
+            if cp == 0x04AF and not info["capslike"]:
+                stem_src = _find(cmap, "l", "I")
+            m = "v" if kind == "fork" else "x"
+            if not (stem_src and _compose_fork(font, src, stem_src, item[3], draw_pen, m)):
+                if is_cff:
+                    pen = T2CharStringPen(width, gs)
+                    draw_pen = pen
+                else:
+                    pen = TTGlyphPen(gs)
+                    draw_pen = Cu2QuPen(pen, max_err=1.0, reverse_direction=False)
+                _stem_glyph(font, src, item[3], draw_pen, fork=m)
+        else:
+            _copy(font, src, draw_pen)
+        new_glyphs[gname] = (cp, src, width, pen)
+        how = {"fork": "үсэгт шулуун хөл нэмж", "xfork": "үсгийн дээд хагаст хөл нэмж", "stem": "үсэгт доош сүүл нэмж",
+               "bar": "үсэгт зураас нэмж"}.get(kind, "үсгийг хуулж")
+        report.append(f"{chr(cp)}: «{chr(_rev(cmap, src))}» {how} үүсгэлээ")
+
+    umap = opts.get("map") or {}
+    if umap:
+        cmap_now = font.getBestCmap()
+        done = []
+        for key, m in umap.items():
+            ucp = int(key)
+            if ucp in cmap_now or not isinstance(m, dict):
+                continue
+            srcch, t, src2ch = m.get("src"), m.get("t", "none"), m.get("src2")
+            if not srcch or ord(srcch[0]) not in cmap_now:
+                continue
+            src = cmap_now[ord(srcch[0])]
+            src2 = cmap_now.get(ord(src2ch[0])) if src2ch else None
+            lcp = ucp + 0x20 if 0x0410 <= ucp <= 0x042F else (0x0451 if ucp == 0x0401 else None)
+            mapped[:] = [(c, g) for c, g in mapped if c not in (ucp, lcp)]
+            if t == "none" and not src2:
+                mapped.append((ucp, src))
+                lsrc = LOWER_LOOK.get(lcp)
+                if lcp and lcp not in cmap_now:
+                    mapped.append((lcp, cmap_now[ord(lsrc)] if lsrc and ord(lsrc) in cmap_now else src))
+                done.append(chr(ucp))
+                continue
+            gname = "uni%04X" % ucp
+            if gname in order:
+                gname += ".mn"
+            if is_cff:
+                pen = T2CharStringPen(0, gs)
+                dpen = pen
+            else:
+                pen = TTGlyphPen(gs)
+                dpen = Cu2QuPen(pen, max_err=1.0, reverse_direction=False)
+            width = _map_glyph(font, src, t, src2, dpen)
+            new_glyphs[gname] = (ucp, src, width, pen)
+            if lcp and lcp not in cmap_now:
+                mapped.append((lcp, gname))
+            done.append(chr(ucp))
+        if done:
+            report.append("Кирилл үсэг нэмэв: " + " ".join(done))
+
+    if st.get("Y") and any(st["Y"]):
+        bad = st["Y"][1] > st["Y"][0] + 0.05
+        report.append(f"Фонтын «Y» үсэг: Y-тэй {st['Y'][0]:.0%}, Ч-тэй {st['Y'][1]:.0%} төстэй"
+                      + (" → Ч хэлбэртэй тул Ү-г өөр үсгээс угсарлаа" if bad else ""))
+    if mapped:
+        report.append("Латинтай адил хэлбэртэй кирилл үсгийг холбов: "
+                      + " ".join(chr(cp) for cp, _ in mapped))
+    if not new_glyphs and not mapped:
+        return None, None, report
+
+    for gname in new_glyphs:
+        if gname not in order:
+            order.append(gname)
+    font.setGlyphOrder(order)
+
+    if is_cff:
+        cff = font["CFF "].cff
+        td = cff.topDictIndex[0]
+        cs = td.CharStrings
+        for gname, (cp, src, width, pen) in new_glyphs.items():
+            priv = td.Private if hasattr(td, "Private") else None
+            dflt = getattr(priv, "defaultWidthX", 0) if priv is not None else 0
+            nom = getattr(priv, "nominalWidthX", 0) if priv is not None else 0
+            pen._width = None if width == dflt else width - nom
+            c = pen.getCharString(private=priv, globalSubrs=cff.GlobalSubrs)
+            if gname in cs.charStrings:
+                idx = cs.charStrings[gname]
+                if cs.charStringsAreIndexed:
+                    cs.charStringsIndex.items[idx] = c
+                else:
+                    cs.charStrings[gname] = c
+            elif cs.charStringsAreIndexed:
+                cs.charStringsIndex.append(c)
+                cs.charStrings[gname] = len(cs.charStringsIndex) - 1
+                td.charset.append(gname)
+            else:
+                cs.charStrings[gname] = c
+                td.charset.append(gname)
+    else:
+        glyf = font["glyf"]
+        for gname, (cp, src, width, pen) in new_glyphs.items():
+            g = pen.glyph()
+            g.recalcBounds(glyf)
+            glyf[gname] = g
+
+    hmtx = font["hmtx"]
+    for gname, (cp, src, width, pen) in new_glyphs.items():
+        lsb = hmtx[src][1]
+        if not is_cff:
+            g = font["glyf"][gname]
+            lsb = getattr(g, "xMin", 0) if g.numberOfContours else 0
+        hmtx[gname] = (width, lsb)
+        if "vmtx" in font and src in font["vmtx"].metrics:
+            font["vmtx"][gname] = font["vmtx"][src]
+    if is_cff:
+        # recompute lsb from actual outlines
+        gs2 = font.getGlyphSet()
+        for gname, (cp, src, width, pen) in new_glyphs.items():
+            polys = _polys(gs2, gname)
+            if polys:
+                hmtx[gname] = (width, round(_bbox(polys)[0]))
+
+    for t in font["cmap"].tables:
+        if t.isUnicode() and t.format in (4, 6, 12, 13, 0):
+            if t.format in (0, 6):
+                continue
+            for gname, (cp, *_r) in new_glyphs.items():
+                t.cmap[cp] = gname
+            for cp, gname in mapped:
+                t.cmap.setdefault(cp, gname)
+    if "post" in font and font["post"].formatType == 2.0:
+        pass  # names come from glyph order on compile
+    if "gvar" in font:  # variable TTF: new glyphs get no variations
+        for gname in new_glyphs:
+            font["gvar"].variations[gname] = []
+    for tag in ("hdmx", "LTSH", "VDMX", "DSIG", "HVAR", "VVAR"):
+        if tag in font:
+            del font[tag]
+
+    if opts.get("family"):
+        _rename(font, opts["family"].strip())
+
+    # copy kerning of the source glyphs (old-style kern table only)
+    if "kern" in font:
+        for st in font["kern"].kernTables:
+            if not hasattr(st, "kernTable"):
+                continue
+            kt = st.kernTable
+            src_map = {g: [n for n, v in new_glyphs.items() if v[1] == g] for g in {v[1] for v in new_glyphs.values()}}
+            add = {}
+            for (l, r), v in kt.items():
+                for nl in [l] + src_map.get(l, []):
+                    for nr in [r] + src_map.get(r, []):
+                        if (nl, nr) != (l, r):
+                            add[(nl, nr)] = v
+            kt.update(add)
+
+    out = io.BytesIO()
+    font.save(out)
+    ext = "otf" if is_cff else "ttf"
+    return out.getvalue(), ext, report
+
+
+def _rev(cmap, gname):
+    for k, v in cmap.items():
+        if v == gname:
+            return k
+    return ord("?")
+
+
+def zip_one(name, data):
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr(name, data)
+    return buf.getvalue()
+
+
+def font_info(data):
+    font = TTFont(io.BytesIO(data))
+    n = font["name"]
+    cmap = font.getBestCmap()
+    return {
+        "family": (n.getDebugName(16) or n.getDebugName(1) or "Font").strip(),
+        "style": (n.getDebugName(17) or n.getDebugName(2) or "Regular").strip(),
+        "glyphs": len(font.getGlyphOrder()),
+        "format": "OTF (CFF)" if "CFF " in font else ("TTF" if "glyf" in font else "?"),
+        "flavor": font.flavor or "",
+        "has": {chr(c): c in cmap for c in TARGETS},
+        "capslike": analyze(font)["capslike"],
+        "ue": [[k, chr(_rev(cmap, n))] if k else None for k, n in
+               [p if p else (None, None) for p in plan_ue(font)[:2]]],
+        "cyr": sum(1 for c in range(0x0410, 0x0450) if c in cmap),
+        "mapped": "".join(chr(cp) for cp, _ in cyr_lookalikes(font)),
+        "palette": map_palette(font),
+        "suggest": map_suggest(font),
+        "cyrMissing": "".join(chr(c) for c in range(0x0410, 0x0450) if c not in cmap),
+    }
+</script>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  let py = null, srcBytes = null, srcName = '', info = null, faceN = 0, currentFace = null, overwrite = false;
+
+  function engine(state, text) {
+    $('engine').className = 'engine ' + state;
+    $('engineText').textContent = text;
+  }
+  function msg(t) { $('msg').textContent = t || ''; }
+
+  const pyReady = (async () => {
+    if (typeof loadPyodide !== 'function') throw new Error('Холболт тасарсан байна. Хуудсаа дахин ачаална уу.');
+    const p = await loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/' });
+    await p.loadPackage(['fonttools']);
+    try { await p.loadPackage(['brotli']); } catch (e) {}
+    p.FS.writeFile('/home/pyodide/mnfont.py', $('pysrc').textContent);
+    p.runPython('import sys, json; sys.path.insert(0, "/home/pyodide"); import mnfont');
+    py = p;
+  })();
+  pyReady.then(() => engine('ready', 'Бэлэн'))
+         .catch(e => engine('err', 'Ачаалж чадсангүй'));
+
+  function bytesFromPy(proxy) {
+    const buf = proxy.getBuffer('u8'); const a = buf.data.slice(); buf.release(); return a;
+  }
+  function shortErr(e) { const l = String(e && e.message || e).trim().split('\n'); return l[l.length - 1]; }
+
+  // ----- input -----
+  const drop = $('drop');
+  ['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  document.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) loadFile(f); });
+  $('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) loadFile(f); e.target.value = ''; });
+
+  async function loadFile(file) {
+    srcName = file.name; overwrite = false;
+    srcBytes = new Uint8Array(await file.arrayBuffer());
+    msg('Уншиж байна…');
+    try { await pyReady; } catch (e) { msg('Боловсруулагч ачаалагдаагүй байна. Хуудсаа дахин ачаална уу.'); return; }
+    try {
+      py.globals.set('src_js', srcBytes);
+      info = JSON.parse(py.runPython('json.dumps(mnfont.font_info(bytes(src_js.to_py())))'));
+    } catch (e) { msg('Энэ файлыг фонт гэж уншиж чадсангүй.'); return; }
+    $('fname').textContent = info.family + ' ' + info.style;
+    $('fmeta').textContent = info.format + ' · ' + info.glyphs + ' тэмдэгт';
+    document.body.classList.add('loaded');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    notice();
+    captions();
+    initMap();
+    regenerate();
+  }
+
+  function notice() {
+    const n = $('notice'); const has = Object.values(info.has).every(Boolean);
+    let t = '';
+    if (has && !overwrite) t = 'Энэ фонтод Ө, Ү аль хэдийн байна. ';
+    else if (info.cyr === 0) t = 'Энэ фонтод кирилл үсэг байхгүй тул зөвхөн Ө ө Ү ү нэмэгдэнэ. Бусад кирилл үсэг өөр фонтоор харагдана.';
+    else if (info.cyr < 64) t = 'Дутуу кирилл үсэг: ' + info.cyrMissing + '. Эдгээр нь өөр фонтоор харагдана.';
+    n.innerHTML = '';
+    n.appendChild(document.createTextNode(t));
+    if (has && !overwrite) {
+      const a = document.createElement('a'); a.href = '#'; a.textContent = 'Шинээр үүсгэж солих';
+      a.style.color = 'inherit'; a.style.fontWeight = '600';
+      a.onclick = e => { e.preventDefault(); overwrite = true; notice(); regenerate(); };
+      n.appendChild(a);
+    }
+    n.classList.toggle('show', !!t);
+  }
+
+  function captions() {
+    const ue = info.ue || [null, null];
+    const lab = (k, src, low) => {
+      if (!k) return '';
+      if (k[0] === 'copy') return '<i>' + k[1] + '</i>-ээс хуулсан';
+      if (k[0] === 'fork' || k[0] === 'xfork') return '<i>' + k[1] + '</i> + <i>' + (low && !info.capslike ? 'l' : 'I') + '</i>-ээс угсарсан';
+      if (k[0] === 'stem') return '<i>' + k[1] + '</i> + доош сүүл';
+      return '';
+    };
+    $('c0').innerHTML = '<i>О</i> + зураас';
+    $('c1').innerHTML = '<i>о</i> + зураас';
+    $('c2').innerHTML = lab(ue[0]);
+    $('c3').innerHTML = lab(ue[1], null, true);
+  }
+
+  function build(family) {
+    py.globals.set('src_js', srcBytes);
+    py.globals.set('opts_js', JSON.stringify({ overwrite, family: family || '', map: mapState }));
+    const res = py.runPython(
+      'out, ext, rep = mnfont.build(bytes(src_js.to_py()), json.loads(opts_js))\n' +
+      '(out if out is not None else b"", ext or "")');
+    const o = res.get(0); const bytes = bytesFromPy(o); o.destroy();
+    const ext = res.get(1); res.destroy();
+    return { bytes, ext };
+  }
+
+  async function regenerate() {
+    if (!py || !srcBytes) return;
+    msg('');
+    try {
+      const r = build('');
+      if (!r.bytes.length) { $('dl').disabled = true; return; }
+      $('dl').disabled = false;
+      $('dlText').textContent = 'Татах .' + r.ext;
+      const face = new FontFace('MNPreview' + (++faceN), r.bytes.slice().buffer);
+      await face.load();
+      document.fonts.add(face);
+      if (currentFace) document.fonts.delete(currentFace);
+      currentFace = face;
+      document.querySelectorAll('.pv').forEach(el => { el.style.fontFamily = '"' + face.family + '", Inter, sans-serif'; });
+    } catch (e) { msg('Алдаа гарлаа: ' + shortErr(e)); }
+  }
+
+
+
+  // ----- Cyrillic map (beta) -----
+  let mapState = {};
+  const TF = [['none', 'Энгийн', 'Аа'], ['mirror', 'Толин тусгал', '↔'], ['flip', 'Урвуулах', '↕'], ['rot', '180° эргүүлэх', '⟲']];
+  let mapTimer = null;
+  function mapChanged() { clearTimeout(mapTimer); mapTimer = setTimeout(regenerate, 250); renderMap(); }
+  function initMap(auto = true) {
+    mapState = {};
+    const s = info.suggest || { letters: [] };
+    if (auto) s.letters.forEach(l => { if (!l.has && l.sug) mapState[l.cp] = Object.assign({}, l.sug); });
+    renderPalette();
+    renderMap();
+  }
+  function renderPalette() {
+    const box = $('palette'); box.innerHTML = '';
+    (info.palette || []).forEach(([ch]) => {
+      if (!/[A-Z0-9]/.test(ch) && !(info.capslike === false && /[a-z]/.test(ch))) return;
+      const d = document.createElement('div'); d.className = 'pal';
+      const g = document.createElement('div'); g.className = 'pg pv'; g.textContent = ch;
+      if (currentFace) g.style.fontFamily = '"' + currentFace.family + '", Inter, sans-serif';
+      const l = document.createElement('div'); l.className = 'pl'; l.textContent = ch;
+      d.append(g, l); box.appendChild(d);
+    });
+    $('fauxNote').classList.toggle('show', !!(info.suggest && info.suggest.faux));
+  }
+  function renderMap() {
+    const grid = $('mapgrid'); grid.innerHTML = '';
+    const s = info.suggest || { letters: [] };
+    s.letters.forEach(l => {
+      const cell = document.createElement('div');
+      const st = mapState[l.cp];
+      cell.className = 'cell' + (l.has ? ' has' : '') + (st ? ' on' : '');
+      const top = document.createElement('div'); top.className = 'top';
+      const lb = document.createElement('span'); lb.className = 'lbl'; lb.textContent = l.ch;
+      const tg = document.createElement('span'); tg.className = 'tag';
+      tg.textContent = l.has ? 'байгаа' : (st ? '← ' + st.src + (st.src2 ? '+' + st.src2 : '') : 'хоосон');
+      top.append(lb, tg); cell.appendChild(top);
+      const g = document.createElement('div'); g.className = 'g pv'; g.textContent = l.ch;
+      if (currentFace) g.style.fontFamily = '"' + currentFace.family + '", Inter, sans-serif';
+      cell.appendChild(g);
+      if (!l.has) {
+        const sel = document.createElement('select');
+        sel.setAttribute('aria-label', l.ch + ' үсгийн эх');
+        const o0 = document.createElement('option'); o0.value = ''; o0.textContent = '— хоосон —'; sel.appendChild(o0);
+        (info.palette || []).forEach(([ch]) => { const o = document.createElement('option'); o.value = ch; o.textContent = ch; sel.appendChild(o); });
+        sel.value = st ? st.src : '';
+        sel.onchange = () => {
+          if (!sel.value) delete mapState[l.cp];
+          else mapState[l.cp] = { src: sel.value, t: (mapState[l.cp] || {}).t || 'none', src2: (mapState[l.cp] || {}).src2 };
+          mapChanged();
+        };
+        cell.appendChild(sel);
+        const tf = document.createElement('div'); tf.className = 'tf';
+        TF.forEach(([k, name, icon]) => {
+          const b = document.createElement('button'); b.type = 'button'; b.textContent = icon; b.title = name;
+          b.setAttribute('aria-label', name); b.setAttribute('aria-pressed', st && st.t === k ? 'true' : 'false');
+          b.disabled = !st;
+          b.onclick = () => { if (mapState[l.cp]) { mapState[l.cp].t = k; mapChanged(); } };
+          tf.appendChild(b);
+        });
+        cell.appendChild(tf);
+      }
+      grid.appendChild(cell);
+    });
+  }
+  $('mapAuto').addEventListener('click', () => { initMap(true); regenerate(); });
+  $('mapClear').addEventListener('click', () => { initMap(false); regenerate(); });
+
+  // ----- download counter (private: counted, never shown) -----
+  function countDownload(ext) {
+    try { fetch('/api/download', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ext }), keepalive: true }).catch(() => {}); } catch (e) {}
+  }
+
+  // ----- download -----
+  let downloadsP;
+  try { downloadsP = window.claude && window.claude.use ? window.claude.use('downloads') : Promise.resolve(null); }
+  catch (e) { downloadsP = Promise.resolve(null); }
+
+  $('dl').addEventListener('click', async () => {
+    if (!py || !srcBytes) return;
+    $('dl').disabled = true; msg('Бэлтгэж байна…');
+    let r;
+    const family = info.family + ' MN';
+    try { r = build(family); } catch (e) { msg('Алдаа: ' + shortErr(e)); $('dl').disabled = false; return; }
+    const fam = family.replace(/[^\p{L}\p{N}\- _]/gu, '').replace(/\s+/g, '');
+    const fontName = fam + '-' + info.style.replace(/\s+/g, '') + '.' + r.ext;
+    let filename = fontName, data = r.bytes;
+    let dl = null; try { dl = await downloadsP; } catch (e) {}
+    // inside Claude the save allowlist has no .otf, so it travels in a zip;
+    // on a normal website the .otf downloads directly
+    if (r.ext === 'otf' && dl) {
+      py.globals.set('fb_js', r.bytes); py.globals.set('fn_js', fontName);
+      const z = py.runPython('mnfont.zip_one(fn_js, bytes(fb_js.to_py()))');
+      data = bytesFromPy(z); z.destroy(); filename = fam + '.zip';
+    }
+    try {
+      if (dl) await dl.save({ filename, data: new Blob([data]) });
+      else {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([data], { type: 'application/octet-stream' }));
+        a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      }
+      msg('Татагдлаа · ' + fontName);
+      countDownload(r.ext);
+    } catch (e) {
+      const c = e && e.code;
+      msg(c === 'declined' ? 'Цуцаллаа.' : c === 'rate_limited' ? 'Түр хүлээгээд дахин оролдоно уу.' : 'Татаж чадсангүй.');
+    } finally { $('dl').disabled = false; }
+  });
+})();
+</script>
+</body>
+</html>

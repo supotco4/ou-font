@@ -213,6 +213,7 @@ from fontTools.pens.t2CharStringPen import T2CharStringPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.pens.cu2quPen import Cu2QuPen
 from fontTools.pens.transformPen import TransformPen
+from fontTools.pens.reverseContourPen import ReverseContourPen
 import math
 
 TARGETS = {
@@ -1029,6 +1030,70 @@ LOOKALIKES = {
 }
 
 
+
+# ---------- manual Cyrillic map (beta) ----------
+# Mongolian Cyrillic uppercase letters (Ө Ү are built separately)
+MN_UPPER = [0x0410, 0x0411, 0x0412, 0x0413, 0x0414, 0x0415, 0x0401, 0x0416, 0x0417, 0x0418,
+            0x0419, 0x041A, 0x041B, 0x041C, 0x041D, 0x041E, 0x041F, 0x0420, 0x0421, 0x0422,
+            0x0423, 0x0424, 0x0425, 0x0426, 0x0427, 0x0428, 0x0429, 0x042A, 0x042B, 0x042C,
+            0x042D, 0x042E, 0x042F]
+# default ideas: (source character, transform[, second source])
+MAP_IDEAS = {
+    0x0410: ("A", "none"), 0x0412: ("B", "none"), 0x0415: ("E", "none"), 0x041A: ("K", "none"),
+    0x041C: ("M", "none"), 0x041D: ("H", "none"), 0x041E: ("O", "none"), 0x0420: ("P", "none"),
+    0x0421: ("C", "none"), 0x0422: ("T", "none"), 0x0425: ("X", "none"), 0x0423: ("Y", "none"),
+    0x042F: ("R", "mirror"), 0x0418: ("N", "mirror"), 0x0419: ("N", "mirror"), 0x0413: ("L", "flip"),
+    0x041F: ("U", "flip"), 0x042C: ("P", "flip"), 0x0417: ("3", "none"), 0x041B: ("V", "flip"),
+    0x042D: ("C", "mirror"), 0x0401: ("\u00cb", "none"), 0x042B: ("P", "flip", "I"),
+}
+LOWER_LOOK = {0x0430: "a", 0x0435: "e", 0x043E: "o", 0x0440: "p", 0x0441: "c", 0x0443: "y", 0x0445: "x"}
+
+
+def map_palette(font):
+    """Glyphs the user may pick from: Latin letters, digits, accented E."""
+    cmap = font.getBestCmap()
+    chars = [chr(c) for c in range(65, 91)] + [chr(c) for c in range(97, 123)] + \
+            [chr(c) for c in range(48, 58)] + ["\u00cb", "\u00eb"]
+    return [[ch, cmap[ord(ch)]] for ch in chars if ord(ch) in cmap]
+
+
+def map_suggest(font):
+    """For each Mongolian uppercase letter: whether the font has it, and an idea."""
+    cmap = font.getBestCmap()
+    faux = False
+    try:
+        sy, sc = plan_ue(font)[2].get("Y", (0, 0))
+        faux = sc > sy + 0.05
+    except Exception:
+        pass
+    out = []
+    for cp in MN_UPPER:
+        has = cp in cmap
+        idea = MAP_IDEAS.get(cp)
+        sug = None
+        if not has and idea and ord(idea[0]) in cmap and not (faux and idea[0].isalpha()):
+            sug = {"src": idea[0], "t": idea[1]}
+            if len(idea) > 2 and ord(idea[2]) in cmap:
+                sug["src2"] = idea[2]
+        out.append({"cp": cp, "ch": chr(cp), "has": has, "sug": sug})
+    return {"letters": out, "faux": faux}
+
+
+def _map_glyph(font, src, t, src2, pen):
+    gs = font.getGlyphSet()
+    w = gs[src].width
+    polys = _polys(gs, src)
+    y0, y1 = (_bbox(polys)[1], _bbox(polys)[3]) if polys else (0, 0)
+    mats = {"none": (1, 0, 0, 1, 0, 0), "mirror": (-1, 0, 0, 1, w, 0),
+            "flip": (1, 0, 0, -1, 0, y0 + y1), "rot": (-1, 0, 0, -1, w, y0 + y1)}
+    m = mats.get(t, mats["none"])
+    target = ReverseContourPen(pen) if m[0] * m[3] < 0 else pen
+    gs[src].draw(TransformPen(target, m))
+    if src2 and src2 in gs:
+        gs[src2].draw(TransformPen(pen, (1, 0, 0, 1, w, 0)))
+        w += gs[src2].width
+    return w
+
 def cyr_lookalikes(font, st=None):
     """[(codepoint, glyph)] for missing Cyrillic letters that can reuse a Latin
     glyph. Empty for faux-Cyrillic fonts, whose Latin slots hold other shapes."""
@@ -1160,6 +1225,45 @@ def build(data, opts):
         how = {"fork": "үсэгт шулуун хөл нэмж", "xfork": "үсгийн дээд хагаст хөл нэмж", "stem": "үсэгт доош сүүл нэмж",
                "bar": "үсэгт зураас нэмж"}.get(kind, "үсгийг хуулж")
         report.append(f"{chr(cp)}: «{chr(_rev(cmap, src))}» {how} үүсгэлээ")
+
+    umap = opts.get("map") or {}
+    if umap:
+        cmap_now = font.getBestCmap()
+        done = []
+        for key, m in umap.items():
+            ucp = int(key)
+            if ucp in cmap_now or not isinstance(m, dict):
+                continue
+            srcch, t, src2ch = m.get("src"), m.get("t", "none"), m.get("src2")
+            if not srcch or ord(srcch[0]) not in cmap_now:
+                continue
+            src = cmap_now[ord(srcch[0])]
+            src2 = cmap_now.get(ord(src2ch[0])) if src2ch else None
+            lcp = ucp + 0x20 if 0x0410 <= ucp <= 0x042F else (0x0451 if ucp == 0x0401 else None)
+            mapped[:] = [(c, g) for c, g in mapped if c not in (ucp, lcp)]
+            if t == "none" and not src2:
+                mapped.append((ucp, src))
+                lsrc = LOWER_LOOK.get(lcp)
+                if lcp and lcp not in cmap_now:
+                    mapped.append((lcp, cmap_now[ord(lsrc)] if lsrc and ord(lsrc) in cmap_now else src))
+                done.append(chr(ucp))
+                continue
+            gname = "uni%04X" % ucp
+            if gname in order:
+                gname += ".mn"
+            if is_cff:
+                pen = T2CharStringPen(0, gs)
+                dpen = pen
+            else:
+                pen = TTGlyphPen(gs)
+                dpen = Cu2QuPen(pen, max_err=1.0, reverse_direction=False)
+            width = _map_glyph(font, src, t, src2, dpen)
+            new_glyphs[gname] = (ucp, src, width, pen)
+            if lcp and lcp not in cmap_now:
+                mapped.append((lcp, gname))
+            done.append(chr(ucp))
+        if done:
+            report.append("Кирилл үсэг нэмэв: " + " ".join(done))
 
     if st.get("Y") and any(st["Y"]):
         bad = st["Y"][1] > st["Y"][0] + 0.05
@@ -1294,6 +1398,8 @@ def font_info(data):
                [p if p else (None, None) for p in plan_ue(font)[:2]]],
         "cyr": sum(1 for c in range(0x0410, 0x0450) if c in cmap),
         "mapped": "".join(chr(cp) for cp, _ in cyr_lookalikes(font)),
+        "palette": map_palette(font),
+        "suggest": map_suggest(font),
         "cyrMissing": "".join(chr(c) for c in range(0x0410, 0x0450) if c not in cmap),
     }
 </script>
