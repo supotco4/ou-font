@@ -1,16 +1,15 @@
-// POST /api/feedback — stores a suggestion in the D1 database bound as DB.
+// GET  /api/feedback  — latest public suggestions (no contact details)
+// POST /api/feedback  — add a suggestion; posts with links are held back
+import { json, ipHash } from "../_lib/util.js";
+
 const KINDS = ["idea", "bug", "other"];
+const LINKY = /(https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|ru|xyz|top|io|me|info|biz|link|click|site|online|shop)\b|t\.me\/|bit\.ly)/i;
 
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
-  });
-}
-
-async function sha256(text) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+export async function onRequestGet({ env }) {
+  const { results } = await env.DB.prepare(
+    "SELECT id, created_at, kind, message, font, reply FROM feedback WHERE status = 'public' ORDER BY id DESC LIMIT 50"
+  ).all();
+  return json({ ok: true, items: results || [] });
 }
 
 export async function onRequestPost({ request, env }) {
@@ -20,32 +19,28 @@ export async function onRequestPost({ request, env }) {
   } catch {
     return json({ ok: false, error: "bad_request" }, 400);
   }
-  if (body.website) return json({ ok: true }); // honeypot: bots fill hidden fields
+  if (body.website) return json({ ok: true, held: true }); // honeypot
 
   const message = String(body.message || "").trim().slice(0, 2000);
   if (message.length < 3) return json({ ok: false, error: "too_short" }, 400);
   const kind = KINDS.includes(body.kind) ? body.kind : "other";
   const contact = String(body.contact || "").trim().slice(0, 200) || null;
-  const font = String(body.font || "").trim().slice(0, 200) || null;
+  const font = String(body.font || "").trim().slice(0, 120) || null;
   const country = (request.cf && request.cf.country) || null;
   const ua = (request.headers.get("user-agent") || "").slice(0, 300);
-  const ip = request.headers.get("cf-connecting-ip") || "";
-  const ipHash = ip ? (await sha256(ip + "|ou-font")).slice(0, 32) : null;
+  const ih = await ipHash(request);
 
-  if (ipHash) {
+  if (ih) {
     const row = await env.DB.prepare(
       "SELECT COUNT(*) AS n FROM feedback WHERE ip_hash = ? AND created_at > datetime('now', '-1 hour')"
-    ).bind(ipHash).first();
+    ).bind(ih).first();
     if (row && row.n >= 5) return json({ ok: false, error: "rate_limited" }, 429);
   }
 
-  await env.DB.prepare(
-    "INSERT INTO feedback (kind, message, contact, font, country, ua, ip_hash) VALUES (?, ?, ?, ?, ?, ?, ?)"
-  ).bind(kind, message, contact, font, country, ua, ipHash).run();
+  const status = LINKY.test(message) || (font && LINKY.test(font)) ? "held" : "public";
+  const res = await env.DB.prepare(
+    "INSERT INTO feedback (kind, message, contact, font, country, ua, ip_hash, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  ).bind(kind, message, contact, font, country, ua, ih, status).run();
 
-  return json({ ok: true });
-}
-
-export function onRequest() {
-  return json({ ok: false, error: "method_not_allowed" }, 405);
+  return json({ ok: true, held: status !== "public", id: res.meta && res.meta.last_row_id });
 }

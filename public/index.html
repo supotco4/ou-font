@@ -111,6 +111,20 @@
   .fb .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
   .fb .status{font-size:13.5px;color:var(--soft);margin-top:10px;min-height:20px}
   .fb .status.ok{color:#22a06b}.fb .status.err{color:#e5484d}
+
+  .posts{margin-top:26px;border-top:1px solid var(--line);padding-top:22px;display:flex;flex-direction:column;gap:12px}
+  .posts h3{font-size:15px;font-weight:600;margin-bottom:2px}
+  .posts .empty{color:var(--faint);font-size:14px}
+  .post{background:var(--tile);border-radius:18px;padding:16px 18px}
+  .post .meta{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--faint);margin-bottom:6px;flex-wrap:wrap}
+  .post .chip{font-weight:600;font-size:12px;padding:3px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line);color:var(--soft)}
+  .post .chip.bug{color:#c2410c}.post .chip.idea{color:var(--accent)}
+  .post .text{white-space:pre-wrap;word-wrap:break-word;font-size:15px}
+  .post .reply{margin-top:10px;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:14px}
+  .post .reply b{font-weight:600}
+  .post .rep{margin-left:auto;background:none;border:0;color:var(--faint);font:inherit;font-size:12.5px;cursor:pointer;padding:4px 6px;border-radius:8px}
+  .post .rep:hover{color:#e5484d}
+  .more{align-self:center;margin-top:4px}
   .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
   nav .links{display:flex;align-items:center;gap:10px}
   nav .navlink{font-size:13px;color:var(--soft);text-decoration:none;padding:6px 12px;border-radius:99px}
@@ -193,6 +207,10 @@
       </div>
       <div class="status" id="fbStatus" role="status" aria-live="polite"></div>
     </form>
+    <div class="posts" id="posts" aria-live="polite">
+      <h3>Бусдын санал</h3>
+      <p class="empty" id="postsEmpty">Ачаалж байна…</p>
+    </div>
   </section>
 
   <footer>Фонтын лиценз өөрчлөхийг зөвшөөрдөг эсэхийг шалгаарай. <span class="sep">·</span> <span class="by">А.Хонгор</span></footer>
@@ -1434,8 +1452,10 @@ def font_info(data):
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.ok) {
-        st.textContent = 'Баярлалаа! Таны санал хүрлээ.'; st.classList.add('ok');
+        st.textContent = data.held ? 'Баярлалаа! Холбоос агуулсан тул шалгасны дараа харагдана.' : 'Баярлалаа! Таны санал нийтлэгдлээ.';
+        st.classList.add('ok');
         $('fbMsg').value = ''; $('fbContact').value = '';
+        loadPosts();
       } else if (res.status === 429) {
         st.textContent = 'Хэт олон удаа илгээлээ. Түр хүлээгээд дахин оролдоорой.'; st.classList.add('err');
       } else { throw new Error(data.error || res.status); }
@@ -1443,6 +1463,60 @@ def font_info(data):
       st.textContent = 'Илгээж чадсангүй. Дахин оролдоно уу.'; st.classList.add('err');
     } finally { btn.disabled = false; }
   });
+
+  const KIND = { idea: 'Санал', bug: 'Алдаа', other: 'Бусад' };
+  function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function fmtDate(s) {
+    const d = new Date((s || '').replace(' ', 'T') + 'Z');
+    if (isNaN(d)) return '';
+    const diff = (Date.now() - d) / 1000;
+    if (diff < 60) return 'саяхан';
+    if (diff < 3600) return Math.floor(diff / 60) + ' минутын өмнө';
+    if (diff < 86400) return Math.floor(diff / 3600) + ' цагийн өмнө';
+    if (diff < 86400 * 7) return Math.floor(diff / 86400) + ' хоногийн өмнө';
+    return d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0');
+  }
+  const reported = new Set();
+  async function loadPosts() {
+    const box = $('posts');
+    try {
+      const res = await fetch('/api/feedback', { cache: 'no-store' });
+      const data = await res.json();
+      box.querySelectorAll('.post').forEach(n => n.remove());
+      const items = (data && data.items) || [];
+      $('postsEmpty').textContent = items.length ? '' : 'Одоогоор санал алга. Эхнийх нь та болоорой!';
+      $('postsEmpty').style.display = items.length ? 'none' : '';
+      items.forEach(it => {
+        const card = el('article', 'post');
+        const meta = el('div', 'meta');
+        meta.appendChild(el('span', 'chip ' + (KIND[it.kind] ? it.kind : 'other'), KIND[it.kind] || 'Бусад'));
+        meta.appendChild(el('span', null, fmtDate(it.created_at)));
+        if (it.font) meta.appendChild(el('span', null, '· ' + it.font));
+        const rep = el('button', 'rep', reported.has(it.id) ? 'Мэдэгдсэн' : 'Мэдэгдэх');
+        rep.type = 'button';
+        rep.setAttribute('aria-label', 'Энэ бичлэгийг зохисгүй гэж мэдэгдэх');
+        rep.disabled = reported.has(it.id);
+        rep.onclick = async () => {
+          rep.disabled = true; rep.textContent = 'Мэдэгдсэн'; reported.add(it.id);
+          try { await fetch('/api/report', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: it.id }) }); } catch (e) {}
+        };
+        meta.appendChild(rep);
+        card.appendChild(meta);
+        card.appendChild(el('div', 'text', it.message));
+        if (it.reply) {
+          const r = el('div', 'reply');
+          r.appendChild(el('b', null, 'А.Хонгор: '));
+          r.appendChild(document.createTextNode(it.reply));
+          card.appendChild(r);
+        }
+        box.appendChild(card);
+      });
+    } catch (e) {
+      $('postsEmpty').style.display = '';
+      $('postsEmpty').textContent = 'Саналуудыг ачаалж чадсангүй.';
+    }
+  }
+  loadPosts();
 
   // ----- download -----
   let downloadsP;
