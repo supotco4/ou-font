@@ -159,7 +159,6 @@
   <section class="hero">
     <h1>Фонтоо <em>монгол</em><br>болгоё.</h1>
     <p class="lead">Ө ө Ү ү үсгийг фонтын өөрийн хэлбэрээс нь автоматаар үүсгэнэ. Файл тань таны төхөөрөмжөөс гарахгүй.</p>
-    <p class="stat" id="stat" hidden>Одоогоор <b id="statN">0</b> фонт монгол болжээ</p>
   </section>
 
   <label class="drop" id="drop">
@@ -176,7 +175,6 @@
     <button class="btn primary" id="dl" disabled>
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg>
       <span id="dlText">Татах</span>
-      <span class="count" id="dlCount" hidden></span>
     </button>
   </div>
 
@@ -1415,18 +1413,9 @@ def font_info(data):
 
 
 
-  // ----- download counter -----
-  function showCount(n) {
-    if (typeof n !== 'number') return;
-    const s = n.toLocaleString('en-US');
-    $('dlCount').textContent = s; $('dlCount').hidden = n < 1;
-    $('dlCount').setAttribute('aria-label', 'Нийт ' + s + ' удаа татагдсан');
-    $('statN').textContent = s; $('stat').hidden = n < 1;
-  }
-  fetch('/api/download', { cache: 'no-store' }).then(r => r.json()).then(d => showCount(d.total)).catch(() => {});
+  // ----- download counter (private: counted, never shown) -----
   function countDownload(ext) {
-    fetch('/api/download', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ext }) })
-      .then(r => r.json()).then(d => showCount(d.total)).catch(() => {});
+    try { fetch('/api/download', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ext }), keepalive: true }).catch(() => {}); } catch (e) {}
   }
 
   // ----- download -----
