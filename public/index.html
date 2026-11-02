@@ -74,6 +74,11 @@
   .primary{background:var(--accent);color:var(--accent-ink);display:inline-flex;align-items:center;gap:8px}
   .primary:disabled{opacity:.4;cursor:default}
   .primary svg,.upl svg{width:16px;height:16px}
+  .count{font-weight:600;font-size:12.5px;padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.22);margin-left:2px;font-variant-numeric:tabular-nums}
+  @media (prefers-color-scheme: dark){ .count{background:rgba(0,0,0,.18)} }
+  .stat{margin-top:18px;font-size:14px;color:var(--soft);display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:99px;background:var(--surface);border:1px solid var(--line)}
+  .stat b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+  .stat[hidden]{display:none}
   .upl{display:inline-flex;align-items:center;gap:8px}
 
   .notice{display:none;font-size:13.5px;color:var(--warn);background:var(--warn-bg);border-radius:14px;padding:11px 16px;margin-bottom:16px}
@@ -154,6 +159,7 @@
   <section class="hero">
     <h1>Фонтоо <em>монгол</em><br>болгоё.</h1>
     <p class="lead">Ө ө Ү ү үсгийг фонтын өөрийн хэлбэрээс нь автоматаар үүсгэнэ. Файл тань таны төхөөрөмжөөс гарахгүй.</p>
+    <p class="stat" id="stat" hidden>Одоогоор <b id="statN">0</b> фонт монгол болжээ</p>
   </section>
 
   <label class="drop" id="drop">
@@ -170,6 +176,7 @@
     <button class="btn primary" id="dl" disabled>
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg>
       <span id="dlText">Татах</span>
+      <span class="count" id="dlCount" hidden></span>
     </button>
   </div>
 
@@ -1408,6 +1415,20 @@ def font_info(data):
 
 
 
+  // ----- download counter -----
+  function showCount(n) {
+    if (typeof n !== 'number') return;
+    const s = n.toLocaleString('en-US');
+    $('dlCount').textContent = s; $('dlCount').hidden = n < 1;
+    $('dlCount').setAttribute('aria-label', 'Нийт ' + s + ' удаа татагдсан');
+    $('statN').textContent = s; $('stat').hidden = n < 1;
+  }
+  fetch('/api/download', { cache: 'no-store' }).then(r => r.json()).then(d => showCount(d.total)).catch(() => {});
+  function countDownload(ext) {
+    fetch('/api/download', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ext }) })
+      .then(r => r.json()).then(d => showCount(d.total)).catch(() => {});
+  }
+
   // ----- download -----
   let downloadsP;
   try { downloadsP = window.claude && window.claude.use ? window.claude.use('downloads') : Promise.resolve(null); }
@@ -1439,6 +1460,7 @@ def font_info(data):
         setTimeout(() => URL.revokeObjectURL(a.href), 4000);
       }
       msg('Татагдлаа · ' + fontName);
+      countDownload(r.ext);
     } catch (e) {
       const c = e && e.code;
       msg(c === 'declined' ? 'Цуцаллаа.' : c === 'rate_limited' ? 'Түр хүлээгээд дахин оролдоно уу.' : 'Татаж чадсангүй.');
