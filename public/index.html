@@ -241,6 +241,7 @@ import zipfile
 from fontTools.ttLib import TTFont
 from fontTools.pens.basePen import BasePen
 from fontTools.pens.recordingPen import RecordingPen
+from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.t2CharStringPen import T2CharStringPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.pens.cu2quPen import Cu2QuPen
@@ -388,6 +389,17 @@ def analyze(font):
             capslike = a.value == b.value
         if not capslike and cap and xh:
             capslike = xh >= 0.9 * cap
+    if not capslike:  # no usable OS/2 metrics: compare drawn heights of x and X
+        try:
+            xn, Xn = _find(cmap, "x"), _find(cmap, "X")
+            if xn and Xn:
+                bx, bX = BoundsPen(gs), BoundsPen(gs)
+                gs[xn].draw(bx)
+                gs[Xn].draw(bX)
+                if bx.bounds and bX.bounds and bX.bounds[3] > bX.bounds[1]:
+                    capslike = (bx.bounds[3] - bx.bounds[1]) >= 0.9 * (bX.bounds[3] - bX.bounds[1])
+        except Exception:
+            pass
     info["capslike"] = capslike
     return info
 
@@ -1713,7 +1725,13 @@ def cyr_lookalikes(font, st=None):
     if sc > sy + 0.05 and sc >= 0.5:
         return []
     out = []
+    caps = analyze(font)["capslike"]
     for cp, lat in LOOKALIKES.items():
+        # caps fonts often put stylistic alternates in the lowercase slots
+        # (e.g. a Λ-shaped 'a'); a Cyrillic lowercase there should match its capital
+        up = LOOKALIKES.get(cp - 0x20) if 0x0430 <= cp <= 0x044F else None
+        if caps and up and ord(up) in cmap:
+            lat = up
         if cp not in cmap and ord(lat) in cmap:
             if cp == 0x0443 and "y" in st and st["y"][1] > st["y"][0] + 0.05 and st["y"][1] >= 0.5:
                 continue
@@ -1878,7 +1896,9 @@ def build(data, opts):
                 mapped.append((ucp, src))
                 lsrc = LOWER_LOOK.get(lcp)
                 if lcp and lcp not in cmap_now:
-                    if lsrc and ord(lsrc) in cmap_now:
+                    if info["capslike"]:  # caps font: lowercase slots may hold alternates
+                        mapped.append((lcp, src))
+                    elif lsrc and ord(lsrc) in cmap_now:
                         mapped.append((lcp, cmap_now[ord(lsrc)]))
                     else:
                         lower_jobs.append((lcp, src, ("map", src, t, None), src))
