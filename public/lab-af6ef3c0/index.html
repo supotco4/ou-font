@@ -1717,7 +1717,20 @@ def make_e_rev(font, M):        # Э  ← mirrored C + middle bar
     bx0 = x0 + (x1 - x0) * 0.3
     if rL - bx0 < M["s"] * 0.5:
         return Cm, w
-    bar = [_rectp(bx0, mid - M["bt"] / 2, rL, mid + M["bt"] / 2, M["sign"])]
+    # the bar's right end follows the curve of the stroke, so nothing overlaps
+    # (overlapping contours show as holes in some renderers)
+    yb, yt = mid - M["bt"] / 2, mid + M["bt"] / 2
+    edge = []
+    for k in range(7):
+        y = yb + (yt - yb) * k / 6
+        hh = _hitsP(Cm, "y", y)
+        if len(hh) < 2:
+            return None
+        edge.append((hh[-2], y))
+    pts = [(bx0, yb)] + edge + [(bx0, yt)]
+    if M["sign"] < 0:
+        pts.reverse()
+    bar = [[("l", pts[i], pts[(i + 1) % len(pts)]) for i in range(len(pts))]]
     return Cm + bar, w
 
 
