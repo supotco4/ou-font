@@ -1825,7 +1825,9 @@ def make_el(font, M):           # Л  ← right leg of H + top bar + a slanted l
     hl = _runs(_hitsP(H, "y", y0 + (y1 - y0) * 0.2))
     if len(hl) < 2:
         return None
-    (lL, lR), (rL, rR) = hl[0], hl[-1]
+    # textured fonts break a leg into several runs: split at the widest gap
+    g = max(range(len(hl) - 1), key=lambda i: hl[i + 1][0] - hl[i][1])
+    (lL, lR), (rL, rR) = (hl[0][0], hl[g][1]), (hl[g + 1][0], hl[-1][1])
     bt = M["bt"]
     top = y1 - bt
     right = _cut(_cut(H, "x", rL - 0.5, True), "y", top, False)

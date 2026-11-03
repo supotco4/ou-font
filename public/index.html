@@ -172,34 +172,56 @@
   .btn.sm{padding:9px 14px;font-size:13px}
   .modal .eq + p + .row{display:flex;gap:8px;justify-content:flex-end}
 
-  .ed .box{max-width:980px;padding:20px 22px;display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 24px)}
+  .ed .box{max-width:1040px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 24px)}
   .ed h3{margin:0}
-  .ed .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .ed .top{display:flex;align-items:center;gap:12px}
+  .ed .top .meta{color:var(--faint);font-size:12.5px;font-variant-numeric:tabular-nums}
+  .ed .gap{flex:1}
+  .ed .icon{width:32px;height:32px;border-radius:50%;border:1px solid var(--line2);background:var(--surface);color:var(--soft);font:600 14px/1 Inter,sans-serif;cursor:pointer}
+  .ed .icon[aria-expanded=true]{background:var(--ink);color:var(--bg)}
   .ed .letters{display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
   .ed .letters button{font:600 16px/1 Inter,sans-serif;min-width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--tile);color:var(--ink);cursor:pointer;position:relative;flex:none}
   .ed .letters button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
   .ed .letters button:disabled{opacity:.3;cursor:default}
   .ed .letters button.mod::after{content:"";position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--accent)}
-  .ed .tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-  .ed .tools button{font:500 13px/1 Inter,sans-serif;padding:9px 12px;border-radius:10px;border:1px solid var(--line2);background:var(--surface);color:var(--ink);cursor:pointer}
-  .ed .tools button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .ed .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .ed .seg{display:flex;background:var(--tile);border:1px solid var(--line);border-radius:12px;padding:3px;gap:2px}
+  .ed .tools button{font:500 13px/1 Inter,sans-serif;padding:8px 11px;border-radius:9px;border:0;background:transparent;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .ed .tools > button{border:1px solid var(--line2);background:var(--surface);border-radius:12px;padding:10px 12px}
+  .ed .tools button:hover:not(:disabled){background:var(--surface)}
+  .ed .tools button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
   .ed .tools button:disabled{opacity:.35;cursor:default}
-  .ed .tools .gap{flex:1}
-  .ed .canvas{background:var(--tile);border-radius:18px;flex:1 1 auto;min-height:260px;height:58vh;position:relative;overflow:hidden}
-  .ed svg{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none}
+  .ed .tools svg{width:15px;height:15px;fill:currentColor}
+  .ed .canvas{background:var(--tile);border-radius:18px;flex:1 1 auto;min-height:260px;height:58vh;position:relative;overflow:hidden;outline:0}
+  .ed .canvas.pan{cursor:grab}.ed .canvas.panning{cursor:grabbing}
+  .ed .canvas.t-draw svg,.ed .canvas.t-rect svg,.ed .canvas.t-add svg{cursor:crosshair}
+  .ed #edSvg{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none}
+  .ed .mini{position:absolute;right:12px;top:12px;width:84px;height:96px;background:var(--surface);border:1px solid var(--line);border-radius:12px;pointer-events:none;padding:8px}
+  .ed .mini svg{width:100%;height:100%}
+  .ed .mini path{fill:var(--ink)}
+  .ed .readout{position:absolute;left:12px;bottom:10px;font:12px Inter,sans-serif;color:var(--soft);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-variant-numeric:tabular-nums;pointer-events:none}
+  .ed .readout:empty{display:none}
+  .ed .help{position:absolute;right:12px;top:12px;bottom:12px;width:min(380px,calc(100% - 24px));overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12.5px;align-content:start;box-shadow:var(--shadow);z-index:2}
+  .ed .help b{grid-column:1/-1;font-size:13px;margin-top:4px}
+  .ed .help span{color:var(--ink);font-weight:500}
+  .ed .help i{font-style:normal;color:var(--soft)}
   .ed .guide{stroke:var(--line2);stroke-width:1;vector-effect:non-scaling-stroke}
   .ed .guide.base{stroke:var(--faint)}
-  .ed .glabel{fill:var(--faint);font:11px Inter,sans-serif}
+  .ed .guide.snap{stroke:#ff7a45;stroke-width:1.5}
+  .ed .glabel{fill:var(--faint);font-family:Inter,sans-serif}
   .ed .ghost{fill:none;stroke:var(--faint);stroke-dasharray:4 4;stroke-width:1;vector-effect:non-scaling-stroke}
-  .ed .shape{fill:var(--ink);fill-opacity:.88;stroke:var(--ink);stroke-width:1;vector-effect:non-scaling-stroke;cursor:move}
-  .ed .shape.sel{fill:var(--accent);fill-opacity:.55}
-  .ed .hl{stroke:var(--accent);stroke-width:1;vector-effect:non-scaling-stroke}
+  .ed .shape{fill:var(--ink);fill-opacity:.86;stroke:var(--ink);stroke-width:1;vector-effect:non-scaling-stroke;cursor:move}
+  .ed .shape.sel{fill:var(--accent);fill-opacity:.5}
+  .ed .hl{stroke:var(--accent);stroke-width:1;vector-effect:non-scaling-stroke;opacity:.7}
   .ed .pt{fill:var(--surface);stroke:var(--accent);stroke-width:1.5;vector-effect:non-scaling-stroke;cursor:grab}
   .ed .pt.off{fill:var(--accent)}
   .ed .pt.sel{fill:#ff7a45;stroke:#ff7a45}
-  .ed .wline{stroke:var(--accent);stroke-width:2;stroke-dasharray:6 4;vector-effect:non-scaling-stroke;cursor:ew-resize}
-  .ed .whit{stroke:transparent;stroke-width:14;vector-effect:non-scaling-stroke;cursor:ew-resize}
-  .ed .draft{fill:none;stroke:#ff7a45;stroke-width:2;vector-effect:non-scaling-stroke}
+  .ed .pt:hover{stroke-width:3}
+  .ed .hit{fill:transparent;stroke:none;cursor:grab}
+  .ed .wline{stroke:var(--accent);stroke-width:2;stroke-dasharray:6 4;vector-effect:non-scaling-stroke}
+  .ed .whit{stroke:transparent;stroke-width:16;vector-effect:non-scaling-stroke;cursor:ew-resize}
+  .ed .draft{fill:rgba(255,122,69,.12);stroke:#ff7a45;stroke-width:2;vector-effect:non-scaling-stroke}
+  .ed .marq{fill:rgba(47,84,235,.08);stroke:var(--accent);stroke-width:1;stroke-dasharray:4 3;vector-effect:non-scaling-stroke}
   .ed .bottom{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .ed .hint{flex:1;color:var(--faint);font-size:12.5px;min-width:200px}
   footer{margin-top:48px;text-align:center;color:var(--faint);font-size:12.5px}
@@ -213,6 +235,9 @@
     .bar .file{flex-basis:100%}
     .ed .box{padding:14px}
     .ed .canvas{height:50vh}
+    .ed .mini{display:none}
+    .ed .tools button{padding:8px 9px}
+    .alpha .tile .g{font-size:34px}
   }
 </style>
 </head>
@@ -294,20 +319,58 @@
   <div class="box">
     <div class="top">
       <h3 id="edTitle">Үсэг засах</h3>
-      <span class="hint" id="edWidth" style="color:var(--faint);font-size:12.5px"></span>
+      <span class="meta" id="edWidth"></span>
+      <span class="gap"></span>
+      <button type="button" class="icon" id="edHelpBtn" aria-expanded="false" title="Товчлолууд">?</button>
     </div>
     <div class="letters" id="edLetters" role="toolbar" aria-label="Засах үсэг"></div>
-    <div class="tools">
-      <button type="button" id="tMove" aria-pressed="true">↖ Зөөх</button>
-      <button type="button" id="tAdd" aria-pressed="false">＋ Цэг нэмэх</button>
-      <button type="button" id="tDraw" aria-pressed="false">✚ Шинэ дүрс</button>
-      <button type="button" id="tCurve" disabled>⌒ Муруй болгох</button>
-      <button type="button" id="tDel" disabled>🗑 Устгах</button>
+    <div class="tools" role="toolbar" aria-label="Хэрэгслүүд">
+      <div class="seg">
+        <button type="button" id="tMove" aria-pressed="true" title="Сонгох, зөөх (V)"><svg viewBox="0 0 16 16"><path d="M3 2l9 5.5-4 1 2.5 4.5-1.6.9L6.4 9.4 3 12z"/></svg>Сонгох</button>
+        <button type="button" id="tAdd" aria-pressed="false" title="Хүрээн дээр цэг нэмэх (A)"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.4"/><path d="M8 1v3M8 12v3M1 8h3M12 8h3" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>Цэг</button>
+        <button type="button" id="tDraw" aria-pressed="false" title="Шинэ дүрс зурах (P)"><svg viewBox="0 0 16 16"><path d="M2 13l3-9 6 2 3 7z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>Дүрс</button>
+        <button type="button" id="tRect" aria-pressed="false" title="Тэгш өнцөгт (R)"><svg viewBox="0 0 16 16"><rect x="2.5" y="4" width="11" height="8" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>Тэгш өнцөгт</button>
+      </div>
+      <div class="seg">
+        <button type="button" id="tCurve" disabled title="Сонгосон цэгийн дараах шулууныг муруй болгох">⌒ Муруй</button>
+        <button type="button" id="tDup" disabled title="Хувилах (Ctrl+D)">⧉ Хувилах</button>
+        <button type="button" id="tDel" disabled title="Устгах (Delete)">✕ Устгах</button>
+      </div>
       <span class="gap"></span>
-      <button type="button" id="tUndo" disabled>↶ Буцаах</button>
-      <button type="button" id="tReset">Анхны хэлбэр</button>
+      <div class="seg">
+        <button type="button" id="tUndo" disabled title="Буцаах (Ctrl+Z)">↶</button>
+        <button type="button" id="tRedo" disabled title="Дахин хийх (Ctrl+Shift+Z)">↷</button>
+      </div>
+      <div class="seg">
+        <button type="button" id="zOut" title="Жижигрүүлэх (−)">−</button>
+        <button type="button" id="zFit" title="Бүтэн харах (0)">⤢</button>
+        <button type="button" id="zIn" title="Томруулах (+)">+</button>
+      </div>
+      <button type="button" id="tReset" title="Програмын үүсгэсэн хэлбэрт буцаах">Анхны хэлбэр</button>
     </div>
-    <div class="canvas"><svg id="edSvg" aria-label="Үсгийн хэлбэр"></svg></div>
+    <div class="canvas" id="edCanvas" tabindex="0">
+      <svg id="edSvg" aria-label="Үсгийн хэлбэр"></svg>
+      <div class="mini" aria-hidden="true"><svg id="edMini"></svg></div>
+      <div class="readout" id="edRead"></div>
+      <div class="help" id="edHelp" hidden>
+        <b>Хулгана</b>
+        <span>Хоосон газар чирэх</span><i>олон цэг сонгох</i>
+        <span>Shift + товших</span><i>сонголтод нэмэх / хасах</i>
+        <span>Дүрс дээр товших</span><i>дүрсийг бүтнээр сонгох</i>
+        <span>Shift + чирэх</span><i>зөвхөн хэвтээ / босоо зөөх</i>
+        <span>Хүрээн дээр давхар товших</span><i>цэг нэмэх</i>
+        <span>Дугуй</span><i>томруулах / жижигрүүлэх</i>
+        <span>Space + чирэх, дунд товч</span><i>харагдах хэсгийг зөөх</i>
+        <b>Гар</b>
+        <span>V · A · P · R</span><i>сонгох · цэг · дүрс · тэгш өнцөгт</i>
+        <span>Сумнууд (Shift ×10)</span><i>сонгосныг 1 нэгжээр зөөх</i>
+        <span>Ctrl+A · Esc</span><i>бүгдийг сонгох · сонголт цуцлах</i>
+        <span>Ctrl+C · Ctrl+V · Ctrl+D</span><i>хуулах · буулгах (өөр үсэгт ч) · хувилах</i>
+        <span>Ctrl+Z · Ctrl+Shift+Z</span><i>буцаах · дахин хийх</i>
+        <span>Delete</span><i>устгах</i>
+        <span>+ · − · 0</span><i>томруулах · жижигрүүлэх · бүтэн харах</i>
+      </div>
+    </div>
     <div class="bottom">
       <span class="hint" id="edHint"></span>
       <button class="btn ghost" type="button" id="edCancel">Болих</button>
@@ -1877,7 +1940,9 @@ def make_el(font, M):           # Л  ← right leg of H + top bar + a slanted l
     hl = _runs(_hitsP(H, "y", y0 + (y1 - y0) * 0.2))
     if len(hl) < 2:
         return None
-    (lL, lR), (rL, rR) = hl[0], hl[-1]
+    # textured fonts break a leg into several runs: split at the widest gap
+    g = max(range(len(hl) - 1), key=lambda i: hl[i + 1][0] - hl[i][1])
+    (lL, lR), (rL, rR) = (hl[0][0], hl[g][1]), (hl[g + 1][0], hl[-1][1])
     bt = M["bt"]
     top = y1 - bt
     right = _cut(_cut(H, "x", rL - 0.5, True), "y", top, False)
@@ -2855,8 +2920,12 @@ def font_info(data):
   const ALPHA = 'АБВГДЕЁЖЗИЙКЛМНОӨПРСТУҮФХЦЧШЩЪЫЬЭЮЯ';
   const ALL_CPS = [...ALPHA].map(c => c.codePointAt(0)).concat([...ALPHA.toLowerCase()].map(c => c.codePointAt(0)));
   const SVGNS = 'http://www.w3.org/2000/svg';
-  let E = null; // editor session
+  let E = null;            // editor session
+  let CLIP = null;         // copied contours, shared between letters
+  let lastEdFocus = null;
   const clone = o => JSON.parse(JSON.stringify(o));
+  const key = (c, p) => c + ',' + p;
+  const unkey = k => k.split(',').map(Number);
 
   function pyOutline(cp) {
     py.globals.set('bb_js', baseBytes); py.globals.set('cp_js', cp);
@@ -2867,22 +2936,23 @@ def font_info(data):
     const cps = mode === 'ou' ? OU : ALL_CPS;
     py.globals.set('bb_js', baseBytes); py.globals.set('cps_js', JSON.stringify(cps));
     const present = new Set(JSON.parse(py.runPython('json.dumps(mnfont.present_cps(bytes(bb_js.to_py()), json.loads(cps_js)))')));
-    E = { cps, present, work: {}, base: {}, cp: null, tool: 'move', sel: null, draft: null, undo: [], drag: null };
+    E = { cps, present, work: {}, base: {}, cp: null, tool: 'move', sel: new Set(), draft: null, drag: null,
+          view: null, space: false, touches: new Map(), snapY: null };
     if (!present.has(cp)) cp = cps.find(c => present.has(c));
-    if (cp == null) return;
+    if (cp == null) { E = null; return; }
     lastEdFocus = document.activeElement;
     $('edModal').hidden = false;
     selectLetter(cp);
+    $('edCanvas').focus({ preventScroll: true });
   }
-  let lastEdFocus = null;
   function selectLetter(cp) {
     if (!E.base[cp]) E.base[cp] = pyOutline(cp);
     if (!E.work[cp]) {
       const src = edits[cp] ? edits[cp] : E.base[cp];
-      E.work[cp] = { width: src.width, contours: clone(src.contours), touched: false };
+      E.work[cp] = { width: src.width, contours: clone(src.contours), touched: false, undo: [], redo: [] };
     }
-    E.cp = cp; E.sel = null; E.draft = null; E.undo = [];
-    setTool('move');
+    E.cp = cp; E.sel = new Set(); E.draft = null; E.view = null;
+    setTool(E.tool === 'add' || E.tool === 'move' ? E.tool : 'move');
     renderLetters(); render();
   }
   function renderLetters() {
@@ -2900,30 +2970,37 @@ def font_info(data):
     if (cur) cur.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     $('edTitle').textContent = '«' + String.fromCodePoint(E.cp) + '» үсгийг засах';
   }
-  function W() { return E.work[E.cp]; }
-  function M() { return E.base[E.cp]; }
-  function push() { E.undo.push(JSON.stringify({ w: W().width, c: W().contours })); if (E.undo.length > 100) E.undo.shift(); W().touched = true; }
-  function undo() {
-    const s = E.undo.pop(); if (!s) return;
-    const o = JSON.parse(s); W().width = o.w; W().contours = o.c; E.sel = null; render();
+  const W = () => E.work[E.cp];
+  const M = () => E.base[E.cp];
+
+  // ----- history -----
+  function snap() { return JSON.stringify({ w: W().width, c: W().contours }); }
+  function push() {
+    const w = W(); w.undo.push(snap()); if (w.undo.length > 200) w.undo.shift();
+    w.redo = []; w.touched = true;
   }
+  function restore(s) { const o = JSON.parse(s); W().width = o.w; W().contours = o.c; E.sel = new Set(); render(); }
+  function undo() { const w = W(); if (!w.undo.length) return; w.redo.push(snap()); restore(w.undo.pop()); }
+  function redo() { const w = W(); if (!w.redo.length) return; w.undo.push(snap()); restore(w.redo.pop()); }
+
+  // ----- tools -----
+  const HINTS = {
+    move: 'Цэг эсвэл дүрс дээр дарж сонгоно · хоосон газар чирж олон цэг сонгоно · Shift — нэмж сонгох · дугуй — томруулах.',
+    add: 'Үсгийн хүрээн дээр товшиж шинэ цэг нэмнэ.',
+    draw: 'Товшиж цэг тавина · эхний цэг дээр дарж эсвэл Enter дарж дүрсээ хаана · Esc — болих.',
+    rect: 'Чирж тэгш өнцөгт зурна.',
+  };
   function setTool(t) {
     E.tool = t; E.draft = t === 'draw' ? [] : null;
-    $('tMove').setAttribute('aria-pressed', t === 'move'); $('tDraw').setAttribute('aria-pressed', t === 'draw');
-    $('tAdd').setAttribute('aria-pressed', t === 'add');
-    hint();
-  }
-  function hint() {
-    $('edHint').textContent = E.tool === 'draw'
-      ? 'Товшиж цэг нэмнэ. Эхний цэг дээр дарж эсвэл Enter дарж дүрсээ хаана. Esc — болих.'
-      : E.tool === 'add' ? 'Үсгийн хүрээн дээр товшиж шинэ цэг нэмнэ.'
-      : 'Цэгийг чирж хэлбэрийг өөрчилнө · дүрсийг чирж зөөнө · шугам дээр давхар товшиж цэг нэмнэ · цэнхэр тасархай шугамыг чирж өргөнийг өөрчилнө.';
+    [['tMove', 'move'], ['tAdd', 'add'], ['tDraw', 'draw'], ['tRect', 'rect']].forEach(([id, n]) => $(id).setAttribute('aria-pressed', t === n));
+    $('edCanvas').className = 'canvas t-' + t;
+    $('edHint').textContent = HINTS[t];
   }
 
-  // geometry helpers
+  // ----- geometry -----
   function segs(c) { // [[i0, [offIdx..], i1]] from on-curve to on-curve
-    const n = c.length, out = [];
-    const ons = []; c.forEach((p, i) => { if (p[2] === 'on') ons.push(i); });
+    const n = c.length, out = [], ons = [];
+    c.forEach((p, i) => { if (p[2] === 'on') ons.push(i); });
     for (let k = 0; k < ons.length; k++) {
       const a = ons[k], b = ons[(k + 1) % ons.length], offs = [];
       for (let j = (a + 1) % n; j !== b; j = (j + 1) % n) offs.push(j);
@@ -2932,7 +3009,7 @@ def font_info(data):
     return out;
   }
   function pathD(c) {
-    if (c.filter(p => p[2] === 'on').length < 1 || c.length < 2) return '';
+    if (c.length < 2 || !c.some(p => p[2] === 'on')) return '';
     let d = '';
     segs(c).forEach(([a, offs, b], k) => {
       const P = i => c[i][0] + ' ' + c[i][1];
@@ -2940,17 +3017,14 @@ def font_info(data):
       if (!offs.length) d += 'L' + P(b);
       else if (c[offs[0]][2] === 'c' && offs.length >= 2) d += 'C' + P(offs[0]) + ' ' + P(offs[1]) + ' ' + P(b);
       else if (offs.length === 1) d += 'Q' + P(offs[0]) + ' ' + P(b);
-      else { // several quadratic off-curves: implied on-curve points between them
-        for (let j = 0; j < offs.length; j++) {
-          const p = c[offs[j]], q = j + 1 < offs.length ? c[offs[j + 1]] : null;
-          const e = q ? ((p[0] + q[0]) / 2) + ' ' + ((p[1] + q[1]) / 2) : P(b);
-          d += 'Q' + p[0] + ' ' + p[1] + ' ' + e;
-        }
+      else for (let j = 0; j < offs.length; j++) {
+        const p = c[offs[j]], q = j + 1 < offs.length ? c[offs[j + 1]] : null;
+        d += 'Q' + p[0] + ' ' + p[1] + ' ' + (q ? ((p[0] + q[0]) / 2) + ' ' + ((p[1] + q[1]) / 2) : P(b));
       }
     });
     return d + 'Z';
   }
-  function area(c) { let s = 0; for (let i = 0; i < c.length; i++) { const p = c[i], q = c[(i + 1) % c.length]; s += p[0] * q[1] - q[0] * p[1]; } return s / 2; }
+  const area = c => { let s = 0; for (let i = 0; i < c.length; i++) { const p = c[i], q = c[(i + 1) % c.length]; s += p[0] * q[1] - q[0] * p[1]; } return s / 2; };
   function inside(pt, c) {
     let r = false;
     for (let i = 0, j = c.length - 1; i < c.length; j = i++) {
@@ -2964,232 +3038,375 @@ def font_info(data):
     cs.forEach((c, i) => {
       const p = c.find(q => q[2] === 'on') || c[0];
       let depth = 0; cs.forEach((o, j) => { if (j !== i && o.length > 2 && inside(p, o)) depth++; });
-      const wantCW = depth % 2 === 0, cw = area(c) < 0;
-      if (wantCW !== cw) c.reverse();
-    });
-  }
-
-  // rendering
-  function el(tag, attrs, parent) {
-    const e = document.createElementNS(SVGNS, tag);
-    for (const k in attrs) e.setAttribute(k, attrs[k]);
-    if (parent) parent.appendChild(e); return e;
-  }
-  let G = null, scaleR = 10;
-  function render() {
-    const svg = $('edSvg'), w = W(), m = M();
-    svg.innerHTML = '';
-    const pad = m.upm * 0.12, top = Math.max(m.asc, m.cap) + pad, bot = Math.min(m.desc, 0) - pad;
-    const x0 = -pad - m.upm * 0.05, x1 = Math.max(w.width, m.width) + pad + m.upm * 0.05;
-    svg.setAttribute('viewBox', x0 + ' ' + (-top) + ' ' + (x1 - x0) + ' ' + (top - bot));
-    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-    const rect = svg.getBoundingClientRect();
-    const upp = Math.max((x1 - x0) / (rect.width || 600), (top - bot) / (rect.height || 400));
-    scaleR = upp * 5.5;
-    G = el('g', { transform: 'scale(1,-1)' }, svg);
-    const guides = [[0, 'Суурь шугам', 'base'], [m.cap, 'Том үсэг'], [m.xh, 'Жижиг үсэг'], [m.desc, ''], [m.asc, '']];
-    guides.forEach(([y, label, cls]) => {
-      if (y == null) return;
-      el('line', { x1: x0 - m.upm * 20, x2: x1 + m.upm * 20, y1: y, y2: y, class: 'guide ' + (cls || '') }, G);
-      if (label) { const t = el('text', { x: x0 + upp * 6, y: -y - upp * 4, class: 'glabel', transform: 'scale(1,-1)', 'font-size': upp * 12 }, G); t.textContent = label; }
-    });
-    el('line', { x1: 0, x2: 0, y1: bot - m.upm * 20, y2: top + m.upm * 20, class: 'guide' }, G);
-    // original outline, faint, for comparison
-    if (w.touched || edits[E.cp]) {
-      const d0 = m.contours.map(pathD).join(''); if (d0) el('path', { d: d0, class: 'ghost' }, G);
-    }
-    w.contours.forEach((c, ci) => {
-      const p = el('path', { d: pathD(c), class: 'shape' + (E.sel && E.sel.c === ci ? ' sel' : ''), 'data-c': ci, 'fill-rule': 'nonzero' }, G);
-    });
-    // handles: lines from on-curve to adjacent off-curves
-    w.contours.forEach((c, ci) => {
-      segs(c).forEach(([a, offs, b]) => {
-        if (!offs.length) return;
-        el('line', { x1: c[a][0], y1: c[a][1], x2: c[offs[0]][0], y2: c[offs[0]][1], class: 'hl' }, G);
-        const l = offs[offs.length - 1];
-        el('line', { x1: c[b][0], y1: c[b][1], x2: c[l][0], y2: c[l][1], class: 'hl' }, G);
-      });
-    });
-    w.contours.forEach((c, ci) => c.forEach((p, pi) => {
-      const on = p[2] === 'on', sel = E.sel && E.sel.c === ci && E.sel.p === pi;
-      el(on ? 'rect' : 'circle', on
-        ? { x: p[0] - scaleR, y: p[1] - scaleR, width: scaleR * 2, height: scaleR * 2, class: 'pt' + (sel ? ' sel' : ''), 'data-c': ci, 'data-p': pi }
-        : { cx: p[0], cy: p[1], r: scaleR * 0.85, class: 'pt off' + (sel ? ' sel' : ''), 'data-c': ci, 'data-p': pi }, G);
-    }));
-    // advance width
-    el('line', { x1: w.width, x2: w.width, y1: bot, y2: top, class: 'wline' }, G);
-    el('line', { x1: w.width, x2: w.width, y1: bot, y2: top, class: 'whit', 'data-w': 1 }, G);
-    if (E.draft && E.draft.length) {
-      el('polyline', { points: E.draft.map(p => p[0] + ',' + p[1]).join(' ') + (E.hover ? ' ' + E.hover[0] + ',' + E.hover[1] : ''), class: 'draft' }, G);
-      E.draft.forEach((p, i) => el('rect', { x: p[0] - scaleR, y: p[1] - scaleR, width: scaleR * 2, height: scaleR * 2, class: 'pt' + (i === 0 ? ' sel' : '') }, G));
-    }
-    $('edWidth').textContent = 'Өргөн: ' + Math.round(w.width);
-    const sp = E.sel && E.sel.p != null ? W().contours[E.sel.c][E.sel.p] : null;
-    $('tDel').disabled = !E.sel;
-    $('tCurve').disabled = !(sp && sp[2] === 'on' && nextIsLine(E.sel.c, E.sel.p));
-    $('tUndo').disabled = !E.undo.length;
-    renderLettersMarks();
-  }
-  function renderLettersMarks() {
-    const b = $('edLetters').querySelector('[aria-pressed=true]');
-    if (b) b.classList.toggle('mod', !!(W().touched || edits[E.cp]));
-  }
-  function nextIsLine(ci, pi) { const c = W().contours[ci]; return segs(c).some(([a, offs]) => a === pi && !offs.length); }
-
-  function fontPt(ev) {
-    const pt = $('edSvg').createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
-    const p = pt.matrixTransform(G.getScreenCTM().inverse());
-    return [Math.round(p.x), Math.round(p.y)];
-  }
-  function nearestSeg(pt) { // returns {c, seg, t, dist}
-    let best = null;
-    W().contours.forEach((c, ci) => segs(c).forEach(s => {
-      const [a, offs, b] = s;
-      for (let k = 0; k <= 24; k++) {
-        const t = k / 24, q = segPoint(c, s, t);
-        const d = Math.hypot(q[0] - pt[0], q[1] - pt[1]);
-        if (!best || d < best.dist) best = { c: ci, seg: s, t, dist: d };
+      if ((depth % 2 === 0) !== (area(c) < 0)) {
+        c.reverse();
+        // keep the selection pointing at the same points
+        const sel = new Set(); E.sel.forEach(k => { const [ci, pi] = unkey(k); sel.add(ci === i ? key(ci, c.length - 1 - pi) : k); }); E.sel = sel;
       }
-    }));
-    return best;
+    });
   }
   const lerp = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
   function segPoint(c, [a, offs, b], t) {
     const P = c[a], Q = c[b];
     if (!offs.length) return lerp(P, Q, t);
     if (offs.length === 1) { const o = c[offs[0]]; return lerp(lerp(P, o, t), lerp(o, Q, t), t); }
-    const o1 = c[offs[0]], o2 = c[offs[1]];
-    const a1 = lerp(P, o1, t), a2 = lerp(o1, o2, t), a3 = lerp(o2, Q, t);
+    const o1 = c[offs[0]], o2 = c[offs[1]], a1 = lerp(P, o1, t), a2 = lerp(o1, o2, t), a3 = lerp(o2, Q, t);
     return lerp(lerp(a1, a2, t), lerp(a2, a3, t), t);
+  }
+  function nearestSeg(pt) {
+    let best = null;
+    W().contours.forEach((c, ci) => segs(c).forEach(s => {
+      for (let k = 0; k <= 32; k++) {
+        const t = k / 32, q = segPoint(c, s, t), d = Math.hypot(q[0] - pt[0], q[1] - pt[1]);
+        if (!best || d < best.dist) best = { c: ci, seg: s, t, dist: d };
+      }
+    }));
+    return best;
   }
   function splitAt(ci, s, t) {
     const c = W().contours[ci], [a, offs, b] = s, P = c[a], Q = c[b], R = v => [Math.round(v[0]), Math.round(v[1])];
     let ins;
     if (!offs.length) ins = [[...R(lerp(P, Q, t)), 'on']];
     else if (offs.length === 1) {
-      const o = c[offs[0]], l = lerp(P, o, t), r = lerp(o, Q, t), m = lerp(l, r, t);
-      ins = [[...R(l), 'q'], [...R(m), 'on'], [...R(r), 'q']];
+      const o = c[offs[0]], l = lerp(P, o, t), r = lerp(o, Q, t);
+      ins = [[...R(l), 'q'], [...R(lerp(l, r, t)), 'on'], [...R(r), 'q']];
     } else {
-      const o1 = c[offs[0]], o2 = c[offs[1]];
-      const a1 = lerp(P, o1, t), a2 = lerp(o1, o2, t), a3 = lerp(o2, Q, t), b1 = lerp(a1, a2, t), b2 = lerp(a2, a3, t), m = lerp(b1, b2, t);
-      ins = [[...R(a1), 'c'], [...R(b1), 'c'], [...R(m), 'on'], [...R(b2), 'c'], [...R(a3), 'c']];
+      const o1 = c[offs[0]], o2 = c[offs[1]], a1 = lerp(P, o1, t), a2 = lerp(o1, o2, t), a3 = lerp(o2, Q, t);
+      const b1 = lerp(a1, a2, t), b2 = lerp(a2, a3, t);
+      ins = [[...R(a1), 'c'], [...R(b1), 'c'], [...R(lerp(b1, b2, t)), 'on'], [...R(b2), 'c'], [...R(a3), 'c']];
     }
-    // rebuild contour: replace offs of this segment by ins
     const out = [], skip = new Set(offs);
-    for (let i = 0; i < c.length; i++) {
-      if (skip.has(i)) continue;
-      out.push(c[i]);
-      if (i === a) out.push(...ins);
-    }
+    for (let i = 0; i < c.length; i++) { if (skip.has(i)) continue; out.push(c[i]); if (i === a) out.push(...ins); }
     W().contours[ci] = out;
-    return out.indexOf(ins[offs.length ? Math.floor(ins.length / 2) : 0]);
+    return out.indexOf(ins.find(p => p[2] === 'on'));
+  }
+  function bounds() {
+    const w = W(), m = M();
+    let x0 = Math.min(0, ...[].concat(...w.contours).map(p => p[0])), x1 = Math.max(w.width, ...[].concat(...w.contours).map(p => p[0]));
+    const top = Math.max(m.asc, m.cap), bot = Math.min(m.desc, 0);
+    return { x0, x1, top, bot };
   }
 
-  // pointer interaction
-  const svgEl = $('edSvg');
+  // ----- view (zoom / pan) -----
+  function fitView() {
+    const m = M(), b = bounds(), pad = m.upm * 0.1;
+    E.view = { x: b.x0 - pad, y: -(b.top + pad), w: (b.x1 - b.x0) + pad * 2, h: (b.top - b.bot) + pad * 2 };
+  }
+  function viewScale() { // font units per screen pixel
+    const r = $('edSvg').getBoundingClientRect();
+    return Math.max(E.view.w / (r.width || 600), E.view.h / (r.height || 400));
+  }
+  function zoomAt(f, cx, cy) { // f>1 zooms in; cx, cy in font units (y up)
+    const v = E.view, sy = -cy;
+    const nw = Math.min(Math.max(v.w / f, M().upm * 0.05), M().upm * 20), k = nw / v.w;
+    E.view = { x: cx - (cx - v.x) * k, y: sy - (sy - v.y) * k, w: v.w * k, h: v.h * k };
+    render();
+  }
+  function zoomCenter(f) { const v = E.view; zoomAt(f, v.x + v.w / 2, -(v.y + v.h / 2)); }
+
+  // ----- rendering -----
+  function el(tag, attrs, parent) {
+    const e = document.createElementNS(SVGNS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e); return e;
+  }
+  let G = null, R0 = 10;
+  function render() {
+    const svg = $('edSvg'), w = W(), m = M();
+    if (!E.view) fitView();
+    svg.innerHTML = '';
+    const v = E.view;
+    svg.setAttribute('viewBox', v.x + ' ' + v.y + ' ' + v.w + ' ' + v.h);
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    const upp = viewScale(); R0 = upp * 5;
+    const far = m.upm * 50;
+    G = el('g', { transform: 'scale(1,-1)' }, svg);
+    [[0, 'Суурь шугам', 'base'], [m.cap, 'Том үсэг'], [m.xh && m.xh < m.cap * 0.92 ? m.xh : null, 'Жижиг үсэг'], [m.desc, ''], [m.asc, '']]
+      .forEach(([y, label, cls]) => {
+        if (y == null) return;
+        el('line', { x1: -far, x2: far, y1: y, y2: y, class: 'guide ' + (cls || '') + (E.snapY === y ? ' snap' : '') }, G);
+        if (label) { const t = el('text', { x: v.x + upp * 8, y: -y - upp * 5, class: 'glabel', transform: 'scale(1,-1)', 'font-size': upp * 11 }, G); t.textContent = label; }
+      });
+    el('line', { x1: 0, x2: 0, y1: -far, y2: far, class: 'guide' }, G);
+    if (w.touched || edits[E.cp]) { const d0 = m.contours.map(pathD).join(''); if (d0) el('path', { d: d0, class: 'ghost' }, G); }
+    const selC = new Set([...E.sel].map(k => unkey(k)[0]));
+    const fullC = new Set([...selC].filter(ci => W().contours[ci] && W().contours[ci].every((_, pi) => E.sel.has(key(ci, pi)))));
+    w.contours.forEach((c, ci) => el('path', { d: pathD(c), class: 'shape' + (fullC.has(ci) ? ' sel' : ''), 'data-c': ci, 'fill-rule': 'nonzero' }, G));
+    w.contours.forEach(c => segs(c).forEach(([a, offs, b]) => {
+      if (!offs.length) return;
+      el('line', { x1: c[a][0], y1: c[a][1], x2: c[offs[0]][0], y2: c[offs[0]][1], class: 'hl' }, G);
+      const l = offs[offs.length - 1];
+      el('line', { x1: c[b][0], y1: c[b][1], x2: c[l][0], y2: c[l][1], class: 'hl' }, G);
+    }));
+    w.contours.forEach((c, ci) => c.forEach((p, pi) => {
+      const on = p[2] === 'on', s = E.sel.has(key(ci, pi));
+      el('circle', { cx: p[0], cy: p[1], r: R0 * 2.2, class: 'hit', 'data-c': ci, 'data-p': pi }, G);
+      el(on ? 'rect' : 'circle', on
+        ? { x: p[0] - R0, y: p[1] - R0, width: R0 * 2, height: R0 * 2, class: 'pt' + (s ? ' sel' : ''), 'data-c': ci, 'data-p': pi }
+        : { cx: p[0], cy: p[1], r: R0 * 0.85, class: 'pt off' + (s ? ' sel' : ''), 'data-c': ci, 'data-p': pi }, G);
+    }));
+    el('line', { x1: w.width, x2: w.width, y1: -far, y2: far, class: 'wline' }, G);
+    el('line', { x1: w.width, x2: w.width, y1: -far, y2: far, class: 'whit', 'data-w': 1 }, G);
+    if (E.draft && E.draft.length) {
+      el('polyline', { points: E.draft.concat(E.hover ? [E.hover] : []).map(p => p[0] + ',' + p[1]).join(' '), class: 'draft' }, G);
+      E.draft.forEach((p, i) => el('rect', { x: p[0] - R0, y: p[1] - R0, width: R0 * 2, height: R0 * 2, class: 'pt' + (i === 0 ? ' sel' : '') }, G));
+    }
+    if (E.drag && (E.drag.kind === 'marq' || E.drag.kind === 'rect') && E.drag.cur) {
+      const a = E.drag.start, b = E.drag.cur;
+      el('rect', { x: Math.min(a[0], b[0]), y: Math.min(a[1], b[1]), width: Math.abs(a[0] - b[0]), height: Math.abs(a[1] - b[1]), class: E.drag.kind === 'rect' ? 'draft' : 'marq' }, G);
+    }
+    renderMini();
+    $('edWidth').textContent = 'Өргөн ' + Math.round(w.width);
+    const sel = [...E.sel].map(unkey);
+    if (sel.length === 1) { const p = w.contours[sel[0][0]][sel[0][1]]; $('edRead').textContent = 'x ' + p[0] + '   y ' + p[1]; }
+    else $('edRead').textContent = sel.length ? sel.length + ' цэг сонгосон' : '';
+    $('tDel').disabled = !sel.length;
+    $('tDup').disabled = !fullC.size;
+    $('tCurve').disabled = !(sel.length === 1 && w.contours[sel[0][0]][sel[0][1]][2] === 'on' && lineAfter(sel[0][0], sel[0][1]));
+    $('tUndo').disabled = !w.undo.length; $('tRedo').disabled = !w.redo.length;
+    const b = $('edLetters').querySelector('[aria-pressed=true]');
+    if (b) b.classList.toggle('mod', !!(w.touched || edits[E.cp]));
+  }
+  function renderMini() {
+    const svg = $('edMini'), w = W(), m = M();
+    const top = Math.max(m.asc, m.cap), bot = Math.min(m.desc, 0), h = top - bot;
+    const x0 = Math.min(0, w.width / 2 - h * 0.45), wd = Math.max(w.width, h * 0.9);
+    svg.setAttribute('viewBox', x0 + ' ' + (-top) + ' ' + wd + ' ' + h);
+    svg.innerHTML = '<path transform="scale(1,-1)" fill-rule="nonzero" d="' + w.contours.map(pathD).join('') + '"/>';
+  }
+  const lineAfter = (ci, pi) => segs(W().contours[ci]).some(([a, offs]) => a === pi && !offs.length);
+
+  // ----- pointer input -----
+  const svgEl = $('edSvg'), canvas = $('edCanvas');
+  function fontPt(ev) {
+    const pt = svgEl.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+    const p = pt.matrixTransform(G.getScreenCTM().inverse());
+    return [Math.round(p.x), Math.round(p.y)];
+  }
+  function selectContour(ci, add) {
+    if (!add) E.sel = new Set();
+    W().contours[ci].forEach((_, pi) => E.sel.add(key(ci, pi)));
+  }
+  function beginMove(pt) { // remember where every point that will move started
+    const cs = W().contours, moving = new Set(E.sel);
+    E.sel.forEach(k => { // on-curve points carry their handles along
+      const [ci, pi] = unkey(k), c = cs[ci];
+      if (c[pi][2] !== 'on') return;
+      const n = c.length;
+      [-1, 1].forEach(d => { const j = (pi + d + n) % n; if (c[j][2] !== 'on') moving.add(key(ci, j)); });
+    });
+    const orig = new Map(); moving.forEach(k => { const [ci, pi] = unkey(k); orig.set(k, cs[ci][pi].slice(0, 2)); });
+    E.drag = { kind: 'move', start: pt, orig, pushed: false };
+  }
+  function doMove(pt, shift) {
+    const d = E.drag;
+    let dx = pt[0] - d.start[0], dy = pt[1] - d.start[1];
+    if (shift) { if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0; }
+    E.snapY = null;
+    if (E.sel.size === 1 && !shift) { // snap a single point to the guide lines
+      const [ci, pi] = unkey([...E.sel][0]), o = d.orig.get(key(ci, pi)), m = M(), tol = viewScale() * 7;
+      const ty = o[1] + dy;
+      for (const g of [0, m.cap, m.xh, m.asc, m.desc]) if (g != null && Math.abs(ty - g) < tol) { dy = g - o[1]; E.snapY = g; break; }
+      const tx = o[0] + dx;
+      for (const g of [0, W().width]) if (Math.abs(tx - g) < tol) { dx = g - o[0]; break; }
+    }
+    if (!dx && !dy && !d.pushed) return;
+    if (!d.pushed) { push(); d.pushed = true; }
+    const cs = W().contours;
+    d.orig.forEach((o, k) => { const [ci, pi] = unkey(k); cs[ci][pi][0] = o[0] + dx; cs[ci][pi][1] = o[1] + dy; });
+    render();
+  }
+  function pinchStart() {
+    const [a, b] = [...E.touches.values()];
+    E.drag = { kind: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y), m0: [(a.x + b.x) / 2, (a.y + b.y) / 2], v0: { ...E.view } };
+  }
   svgEl.addEventListener('pointerdown', ev => {
     if (!E) return;
-    const pt = fontPt(ev), t = ev.target, ds = t.dataset || {};
+    canvas.focus({ preventScroll: true });
+    if (ev.pointerType === 'touch') {
+      E.touches.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (E.touches.size === 2) { if (E.drag && E.drag.pushed) undo(); pinchStart(); return; }
+    }
+    const pt = fontPt(ev), ds = ev.target.dataset || {};
+    if (ev.button === 1 || E.space) { // pan
+      ev.preventDefault();
+      E.drag = { kind: 'pan', sx: ev.clientX, sy: ev.clientY, v0: { ...E.view } };
+      canvas.classList.add('panning'); svgEl.setPointerCapture(ev.pointerId); return;
+    }
+    if (ev.button !== 0 && ev.pointerType === 'mouse') return;
     if (E.tool === 'draw') {
-      if (E.draft.length >= 3) {
-        const f = E.draft[0];
-        if (Math.hypot(f[0] - pt[0], f[1] - pt[1]) < scaleR * 2.2) { closeDraft(); return; }
-      }
+      if (E.draft.length >= 3 && Math.hypot(E.draft[0][0] - pt[0], E.draft[0][1] - pt[1]) < R0 * 2.5) { closeDraft(); return; }
       E.draft.push(pt); render(); return;
     }
     if (E.tool === 'add') {
       const b = nearestSeg(pt);
-      if (b && b.dist < scaleR * 5) { push(); const idx = splitAt(b.c, b.seg, Math.min(0.98, Math.max(0.02, b.t))); E.sel = { c: b.c, p: idx }; render(); }
+      if (b && b.dist < R0 * 5) { push(); const i = splitAt(b.c, b.seg, Math.min(0.98, Math.max(0.02, b.t))); E.sel = new Set([key(b.c, i)]); render(); }
       return;
     }
     svgEl.setPointerCapture(ev.pointerId);
+    if (E.tool === 'rect') { E.drag = { kind: 'rect', start: pt, cur: null }; return; }
     if (ds.w) { push(); E.drag = { kind: 'w' }; return; }
     if (ds.p != null) {
-      push(); E.sel = { c: +ds.c, p: +ds.p };
-      E.drag = { kind: 'p', last: pt }; render(); return;
+      const k = key(+ds.c, +ds.p);
+      if (ev.shiftKey) { if (E.sel.has(k)) E.sel.delete(k); else E.sel.add(k); render(); E.drag = null; return; }
+      if (!E.sel.has(k)) E.sel = new Set([k]);
+      beginMove(pt); render(); return;
     }
     if (ds.c != null) {
-      push(); E.sel = { c: +ds.c };
-      E.drag = { kind: 'c', last: pt }; render(); return;
+      const ci = +ds.c, all = W().contours[ci].every((_, pi) => E.sel.has(key(ci, pi)));
+      if (ev.shiftKey && all) { W().contours[ci].forEach((_, pi) => E.sel.delete(key(ci, pi))); render(); return; }
+      if (!all) selectContour(ci, ev.shiftKey);
+      beginMove(pt); render(); return;
     }
-    E.sel = null; render();
+    E.drag = { kind: 'marq', start: pt, cur: null, add: ev.shiftKey, prev: new Set(E.sel) };
+    if (!ev.shiftKey) { E.sel = new Set(); render(); }
   });
   svgEl.addEventListener('pointermove', ev => {
     if (!E) return;
-    const pt = fontPt(ev);
-    if (E.tool === 'draw' && E.draft && E.draft.length) { E.hover = pt; render(); return; }
-    if (!E.drag) return;
-    const d = E.drag;
-    if (d.kind === 'w') { W().width = Math.max(0, pt[0]); render(); return; }
-    const dx = pt[0] - d.last[0], dy = pt[1] - d.last[1]; d.last = pt;
-    if (!dx && !dy) return;
-    const c = W().contours[E.sel.c];
-    if (d.kind === 'c') c.forEach(p => { p[0] += dx; p[1] += dy; });
-    else {
-      const i = E.sel.p, p = c[i]; p[0] += dx; p[1] += dy;
-      if (p[2] === 'on') { // carry the handles along
-        const n = c.length, pr = c[(i - 1 + n) % n], nx = c[(i + 1) % n];
-        if (pr[2] !== 'on' && pr !== p) { pr[0] += dx; pr[1] += dy; }
-        if (nx[2] !== 'on' && nx !== p && nx !== pr) { nx[0] += dx; nx[1] += dy; }
+    if (ev.pointerType === 'touch' && E.touches.has(ev.pointerId)) {
+      E.touches.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (E.drag && E.drag.kind === 'pinch' && E.touches.size === 2) {
+        const [a, b] = [...E.touches.values()], d = E.drag, r = svgEl.getBoundingClientRect();
+        const k = d.d0 / Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), upp = Math.max(d.v0.w / r.width, d.v0.h / r.height);
+        const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        const fx = d.v0.x + (d.m0[0] - r.left) * upp, fy = d.v0.y + (d.m0[1] - r.top) * upp; // focus in view coords
+        const nw = d.v0.w * k, nh = d.v0.h * k, nupp = upp * k;
+        E.view = { x: fx - (mx - r.left) * nupp, y: fy - (my - r.top) * nupp, w: nw, h: nh };
+        render(); return;
       }
     }
-    render();
+    const pt = fontPt(ev);
+    if (E.tool === 'draw' && E.draft && E.draft.length) { E.hover = pt; render(); return; }
+    const d = E.drag; if (!d) return;
+    if (d.kind === 'pan') {
+      const upp = viewScale();
+      E.view = { ...d.v0, x: d.v0.x - (ev.clientX - d.sx) * upp, y: d.v0.y - (ev.clientY - d.sy) * upp };
+      render(); return;
+    }
+    if (d.kind === 'w') { W().width = Math.max(0, pt[0]); render(); return; }
+    if (d.kind === 'move') { doMove(pt, ev.shiftKey); return; }
+    if (d.kind === 'marq' || d.kind === 'rect') {
+      d.cur = pt;
+      if (d.kind === 'marq') {
+        const x0 = Math.min(d.start[0], pt[0]), x1 = Math.max(d.start[0], pt[0]), y0 = Math.min(d.start[1], pt[1]), y1 = Math.max(d.start[1], pt[1]);
+        E.sel = new Set(d.add ? d.prev : []);
+        W().contours.forEach((c, ci) => c.forEach((p, pi) => { if (p[0] >= x0 && p[0] <= x1 && p[1] >= y0 && p[1] <= y1) E.sel.add(key(ci, pi)); }));
+      }
+      render();
+    }
   });
-  const endDrag = () => { if (E && E.drag) { E.drag = null; if (E.sel && E.sel.p == null) { fixDirs(); } render(); } };
+  function endDrag(ev) {
+    if (!E) return;
+    if (ev && ev.pointerType === 'touch') { E.touches.delete(ev.pointerId); if (E.drag && E.drag.kind === 'pinch') { if (E.touches.size < 2) E.drag = null; return; } }
+    const d = E.drag; E.drag = null; E.snapY = null;
+    canvas.classList.remove('panning');
+    if (!d) return;
+    if (d.kind === 'rect' && d.cur) {
+      const x0 = Math.min(d.start[0], d.cur[0]), x1 = Math.max(d.start[0], d.cur[0]), y0 = Math.min(d.start[1], d.cur[1]), y1 = Math.max(d.start[1], d.cur[1]);
+      if (x1 - x0 > 2 && y1 - y0 > 2) {
+        push();
+        W().contours.push([[x0, y0, 'on'], [x0, y1, 'on'], [x1, y1, 'on'], [x1, y0, 'on']]);
+        const ci = W().contours.length - 1; selectContour(ci); fixDirs();
+        setTool('move');
+      }
+    }
+    if (d.kind === 'move' && d.pushed) fixDirs();
+    render();
+  }
   svgEl.addEventListener('pointerup', endDrag);
   svgEl.addEventListener('pointercancel', endDrag);
   svgEl.addEventListener('dblclick', ev => {
     if (!E || E.tool !== 'move') return;
     const pt = fontPt(ev), b = nearestSeg(pt);
-    if (!b || b.dist > scaleR * 4) return;
+    if (!b || b.dist > R0 * 4) return;
     push();
-    const t = Math.min(0.98, Math.max(0.02, b.t));
-    const idx = splitAt(b.c, b.seg, t);
-    E.sel = { c: b.c, p: idx }; render();
+    const i = splitAt(b.c, b.seg, Math.min(0.98, Math.max(0.02, b.t)));
+    E.sel = new Set([key(b.c, i)]); render();
   });
+  canvas.addEventListener('wheel', ev => {
+    if (!E) return;
+    ev.preventDefault();
+    const pt = fontPt(ev);
+    const dy = ev.deltaMode === 1 ? ev.deltaY * 16 : ev.deltaY;
+    zoomAt(Math.exp(-dy * (ev.ctrlKey ? 0.01 : 0.0022)), pt[0], pt[1]);
+  }, { passive: false });
+
+  // ----- actions -----
   function closeDraft() {
     if (!E.draft || E.draft.length < 3) return;
     push();
     W().contours.push(E.draft.map(p => [p[0], p[1], 'on']));
-    E.sel = { c: W().contours.length - 1 };
-    fixDirs();
+    selectContour(W().contours.length - 1); fixDirs();
     setTool('move'); render();
   }
   function del() {
-    if (!E.sel) return;
+    if (!E.sel.size) return;
     push();
-    const cs = W().contours, c = cs[E.sel.c];
-    if (E.sel.p == null) cs.splice(E.sel.c, 1);
-    else {
-      const i = E.sel.p, p = c[i];
-      if (p[2] !== 'on') { // straighten that segment
-        const s = segs(c).find(([a, offs]) => offs.includes(i)), drop = new Set(s[1]);
-        cs[E.sel.c] = c.filter((_, j) => !drop.has(j));
-      } else {
-        const s = segs(c).find(([a]) => a === i), drop = new Set([i, ...(s ? s[1] : [])]);
-        const rest = c.filter((_, j) => !drop.has(j));
-        if (rest.filter(q => q[2] === 'on').length < 2) cs.splice(E.sel.c, 1); else cs[E.sel.c] = rest;
-      }
-    }
-    E.sel = null; render();
+    const byC = new Map();
+    E.sel.forEach(k => { const [ci, pi] = unkey(k); if (!byC.has(ci)) byC.set(ci, new Set()); byC.get(ci).add(pi); });
+    const cs = W().contours, remove = new Set();
+    byC.forEach((ps, ci) => {
+      const c = cs[ci];
+      if (ps.size === c.length) { remove.add(ci); return; }
+      const drop = new Set(), sg = segs(c);
+      ps.forEach(i => {
+        if (c[i][2] === 'on') { drop.add(i); const s = sg.find(([a]) => a === i); if (s) s[1].forEach(j => drop.add(j)); }
+        else { const s = sg.find(([, offs]) => offs.includes(i)); if (s) s[1].forEach(j => drop.add(j)); }
+      });
+      const rest = c.filter((_, j) => !drop.has(j));
+      if (rest.filter(q => q[2] === 'on').length < 2) remove.add(ci); else cs[ci] = rest;
+    });
+    W().contours = cs.filter((_, ci) => !remove.has(ci));
+    E.sel = new Set(); render();
   }
+  function fullContours() {
+    return [...new Set([...E.sel].map(k => unkey(k)[0]))].filter(ci => W().contours[ci].every((_, pi) => E.sel.has(key(ci, pi))));
+  }
+  function copySel() {
+    let cis = fullContours();
+    if (!cis.length) cis = [...new Set([...E.sel].map(k => unkey(k)[0]))];
+    if (cis.length) CLIP = cis.map(ci => clone(W().contours[ci]));
+    return cis.length;
+  }
+  function paste(off) {
+    if (!CLIP) return;
+    push();
+    const start = W().contours.length;
+    CLIP.forEach(c => W().contours.push(c.map(p => [p[0] + off, p[1] - off, p[2]])));
+    E.sel = new Set(); for (let ci = start; ci < W().contours.length; ci++) selectContour(ci, true);
+    fixDirs(); render();
+  }
+  function duplicate() { const keep = CLIP; if (copySel()) paste(Math.round(M().upm * 0.03)); CLIP = keep; }
   function toCurve() {
-    if (!E.sel || E.sel.p == null) return;
-    const c = W().contours[E.sel.c], i = E.sel.p, s = segs(c).find(([a, offs]) => a === i && !offs.length);
+    const sel = [...E.sel].map(unkey); if (sel.length !== 1) return;
+    const [ci, i] = sel[0], c = W().contours[ci], s = segs(c).find(([a, offs]) => a === i && !offs.length);
     if (!s) return;
     push();
     const P = c[s[0]], Q = c[s[2]], R = v => [Math.round(v[0]), Math.round(v[1])];
     c.splice(i + 1, 0, [...R(lerp(P, Q, 1 / 3)), 'c'], [...R(lerp(P, Q, 2 / 3)), 'c']);
-    E.sel = { c: E.sel.c, p: i + 1 }; render();
+    E.sel = new Set([key(ci, i + 1)]); render();
+  }
+  function nudge(dx, dy) {
+    if (!E.sel.size) return;
+    push(); beginMove([0, 0]); const d = E.drag; E.drag = null;
+    const cs = W().contours; d.orig.forEach((o, k) => { const [ci, pi] = unkey(k); cs[ci][pi][0] = o[0] + dx; cs[ci][pi][1] = o[1] + dy; });
+    render();
   }
   $('tMove').onclick = () => { setTool('move'); render(); };
   $('tAdd').onclick = () => { setTool('add'); render(); };
-  $('tDraw').onclick = () => { setTool('draw'); E.sel = null; render(); };
+  $('tDraw').onclick = () => { setTool('draw'); E.sel = new Set(); render(); };
+  $('tRect').onclick = () => { setTool('rect'); render(); };
   $('tDel').onclick = del;
+  $('tDup').onclick = duplicate;
   $('tCurve').onclick = toCurve;
   $('tUndo').onclick = undo;
-  $('tReset').onclick = () => { push(); const m = M(); W().width = m.width; W().contours = clone(m.contours); W().reset = true; E.sel = null; render(); };
-  function closeEditor() { $('edModal').hidden = true; E = null; if (lastEdFocus && lastEdFocus.focus) lastEdFocus.focus(); }
+  $('tRedo').onclick = redo;
+  $('zIn').onclick = () => zoomCenter(1.25);
+  $('zOut').onclick = () => zoomCenter(0.8);
+  $('zFit').onclick = () => { fitView(); render(); };
+  $('tReset').onclick = () => { push(); const m = M(); W().width = m.width; W().contours = clone(m.contours); E.sel = new Set(); render(); };
+  $('edHelpBtn').onclick = () => { const h = $('edHelp'), open = h.hidden; h.hidden = !open; $('edHelpBtn').setAttribute('aria-expanded', open); };
+  function closeEditor() { $('edModal').hidden = true; $('edHelp').hidden = true; $('edHelpBtn').setAttribute('aria-expanded', false); E = null; if (lastEdFocus && lastEdFocus.focus) lastEdFocus.focus(); }
   $('edCancel').onclick = closeEditor;
   $('edSave').onclick = () => {
     let changed = false;
@@ -3197,29 +3414,42 @@ def font_info(data):
       if (!w.touched) return;
       changed = true;
       const same = JSON.stringify(w.contours) === JSON.stringify(E.base[cp].contours) && w.width === E.base[cp].width;
-      if (same) delete edits[cp];
-      else edits[cp] = { width: Math.round(w.width), contours: w.contours };
+      if (same) delete edits[cp]; else edits[cp] = { width: Math.round(w.width), contours: w.contours };
     });
     closeEditor();
     if (changed) { regenerate(); msg('Засварыг хадгаллаа. Татахад таны зурсан хэлбэр орно.'); }
   };
   document.addEventListener('keydown', ev => {
     if (!E || $('edModal').hidden) return;
-    const k = ev.key;
-    if ((ev.ctrlKey || ev.metaKey) && k.toLowerCase() === 'z') { ev.preventDefault(); undo(); return; }
-    if (k === 'Escape') { ev.preventDefault(); if (E.tool === 'draw' && E.draft && E.draft.length) { E.draft = []; E.hover = null; render(); } else if (E.tool === 'draw') { setTool('move'); render(); } else closeEditor(); return; }
-    if (k === 'Enter' && E.tool === 'draw') { ev.preventDefault(); closeDraft(); return; }
-    if ((k === 'Delete' || k === 'Backspace') && E.sel && ev.target.tagName !== 'INPUT') { ev.preventDefault(); del(); return; }
-    const dirs = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
-    if (dirs[k] && E.sel) {
+    const k = ev.key, mod = ev.ctrlKey || ev.metaKey, lk = k.toLowerCase();
+    if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'TEXTAREA') return;
+    if (k === ' ' && !E.space) { E.space = true; canvas.classList.add('pan'); ev.preventDefault(); return; }
+    if (mod && lk === 'z') { ev.preventDefault(); ev.shiftKey ? redo() : undo(); return; }
+    if (mod && lk === 'y') { ev.preventDefault(); redo(); return; }
+    if (mod && lk === 'a') { ev.preventDefault(); E.sel = new Set(); W().contours.forEach((_, ci) => selectContour(ci, true)); render(); return; }
+    if (mod && lk === 'c') { if (copySel()) { ev.preventDefault(); $('edHint').textContent = 'Хууллаа. Ctrl+V дарж энэ эсвэл өөр үсэгт буулгана.'; } return; }
+    if (mod && lk === 'v') { if (CLIP) { ev.preventDefault(); paste(0); } return; }
+    if (mod && lk === 'd') { ev.preventDefault(); duplicate(); return; }
+    if (k === 'Escape') {
       ev.preventDefault();
-      const st = ev.shiftKey ? 10 : 1, [dx, dy] = dirs[k].map(v => v * st), c = W().contours[E.sel.c];
-      push();
-      if (E.sel.p == null) c.forEach(p => { p[0] += dx; p[1] += dy; });
-      else { const p = c[E.sel.p]; p[0] += dx; p[1] += dy; }
-      render();
+      if (!$('edHelp').hidden) { $('edHelpBtn').click(); return; }
+      if (E.tool === 'draw' && E.draft && E.draft.length) { E.draft = []; E.hover = null; render(); return; }
+      if (E.tool !== 'move') { setTool('move'); render(); return; }
+      if (E.sel.size) { E.sel = new Set(); render(); return; }
+      closeEditor(); return;
     }
+    if (k === 'Enter' && E.tool === 'draw') { ev.preventDefault(); closeDraft(); return; }
+    if ((k === 'Delete' || k === 'Backspace') && E.sel.size) { ev.preventDefault(); del(); return; }
+    const dirs = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
+    if (dirs[k] && E.sel.size) { ev.preventDefault(); const s = ev.shiftKey ? 10 : 1; nudge(dirs[k][0] * s, dirs[k][1] * s); return; }
+    if (mod || ev.altKey) return;
+    const tools = { v: 'move', a: 'add', p: 'draw', r: 'rect' };
+    if (tools[lk]) { ev.preventDefault(); setTool(tools[lk]); if (lk === 'p') E.sel = new Set(); render(); return; }
+    if (k === '+' || k === '=') { ev.preventDefault(); zoomCenter(1.25); return; }
+    if (k === '-' || k === '_') { ev.preventDefault(); zoomCenter(0.8); return; }
+    if (k === '0') { ev.preventDefault(); fitView(); render(); }
   });
+  document.addEventListener('keyup', ev => { if (E && ev.key === ' ') { E.space = false; canvas.classList.remove('pan'); } });
   window.addEventListener('resize', () => { if (E) render(); });
   $('edLetters').addEventListener('wheel', ev => { // mouse wheel scrolls the letter row sideways
     const box = $('edLetters');
