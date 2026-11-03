@@ -2965,6 +2965,14 @@ def font_info(data):
     }
   });
   window.addEventListener('resize', () => { if (E) render(); });
+  $('edLetters').addEventListener('wheel', ev => { // mouse wheel scrolls the letter row sideways
+    const box = $('edLetters');
+    if (box.scrollWidth <= box.clientWidth) return;
+    const d = Math.abs(ev.deltaX) > Math.abs(ev.deltaY) ? ev.deltaX : ev.deltaY;
+    if (!d) return;
+    ev.preventDefault();
+    box.scrollLeft += ev.deltaMode === 1 ? d * 36 : d;
+  }, { passive: false });
   $('editBtn').onclick = () => openEditor(0x04E8);
   document.querySelectorAll('.tile').forEach(t => t.addEventListener('click', () => openEditor(t.querySelector('.g').textContent.codePointAt(0))));
 
