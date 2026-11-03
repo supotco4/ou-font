@@ -106,6 +106,16 @@
   .ed .top .howbtn2[hidden]{display:none}
   .howi.big{width:28px;height:28px;font-size:13px;right:12px;bottom:12px}
   #howModal{z-index:60}
+  .howi.pulse{animation:howpulse 1.6s ease-out infinite;opacity:1;color:var(--accent);border-color:var(--accent)}
+  @keyframes howpulse{0%{box-shadow:0 0 0 0 rgba(47,84,235,.55)}70%{box-shadow:0 0 0 12px rgba(47,84,235,0)}100%{box-shadow:0 0 0 0 rgba(47,84,235,0)}}
+  .coach{position:absolute;z-index:40;background:var(--ink);color:var(--bg);font:500 14px/1.35 Inter,sans-serif;padding:12px 38px 12px 14px;border-radius:14px;max-width:250px;box-shadow:0 12px 30px -8px rgba(0,0,0,.35);animation:coachin .35s ease-out,coachbob 2.4s ease-in-out .35s infinite;cursor:pointer}
+  .coach::after{content:"";position:absolute;right:var(--ax,18px);bottom:-7px;width:14px;height:14px;background:var(--ink);transform:rotate(45deg);border-radius:2px}
+  .coach .spark{display:inline-block;margin-right:6px;animation:spark 1.2s ease-in-out infinite}
+  .coach .x{position:absolute;right:10px;top:9px;background:none;border:0;color:inherit;opacity:.6;font:600 15px/1 Inter,sans-serif;cursor:pointer;padding:2px}
+  @keyframes coachin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @keyframes coachbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  @keyframes spark{0%,100%{transform:scale(1) rotate(0);opacity:1}50%{transform:scale(1.35) rotate(18deg);opacity:.75}}
+  @media (prefers-reduced-motion:reduce){.howi.pulse,.coach,.coach .spark{animation:none}}
   .tile .cap{position:absolute;left:0;right:0;bottom:14px;text-align:center;font-size:12px;color:var(--faint);letter-spacing:.01em}
   .tile .cap i{font-style:normal;color:var(--soft)}
   .tile.new::before{content:"";position:absolute;top:14px;right:14px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
@@ -2772,10 +2782,48 @@ def font_info(data):
     regenerate();
     askAllLetters();
   }
+  // ----- one-time hint: "press the ? on a letter" -----
+  let coachEl = null, coachT = null;
+  function coachSeen() { try { return localStorage.getItem('ou-howhint') === '1'; } catch (e) { return false; } }
+  function hideCoach(remember) {
+    if (coachEl) { coachEl.remove(); coachEl = null; }
+    document.querySelectorAll('.howi.pulse').forEach(b => b.classList.remove('pulse'));
+    if (remember) try { localStorage.setItem('ou-howhint', '1'); } catch (e) {}
+  }
+  function placeCoach() {
+    if (!coachEl) return;
+    const t = coachEl._target;
+    if (!t || !t.isConnected || !t.offsetParent) { hideCoach(false); return; }
+    const r = t.getBoundingClientRect(), cw = coachEl.offsetWidth, ch = coachEl.offsetHeight;
+    let left = r.left + r.width / 2 + window.scrollX - cw + 25;
+    left = Math.max(window.scrollX + 8, left);
+    coachEl.style.left = left + 'px';
+    coachEl.style.top = (r.top + window.scrollY - ch - 12) + 'px';
+    coachEl.style.setProperty('--ax', Math.max(10, Math.min(cw - 24, left + cw - (r.left + r.width / 2 + window.scrollX) - 7)) + 'px');
+  }
+  function maybeCoach() {
+    clearTimeout(coachT);
+    coachT = setTimeout(() => {
+      if (coachSeen() || !info || !$('askModal').hidden || !$('edModal').hidden || !$('howModal').hidden) return;
+      const target = mode === 'all' ? document.querySelector('#alpha .howi') : document.querySelector('.tiles .tile .howi');
+      if (!target || !target.offsetParent) return;
+      hideCoach(false);
+      document.querySelectorAll(mode === 'all' ? '#alpha .howi' : '.tiles .howi').forEach(b => b.classList.add('pulse'));
+      coachEl = document.createElement('div'); coachEl.className = 'coach'; coachEl.setAttribute('role', 'status');
+      coachEl.innerHTML = '<span class="spark">✨</span>Үсгийн доорх <b>?</b> дээр дарж хэрхэн үүсгэснийг хараарай<button class="x" type="button" aria-label="Хаах">✕</button>';
+      coachEl._target = target;
+      coachEl.onclick = () => hideCoach(true);
+      document.body.appendChild(coachEl);
+      placeCoach();
+    }, 700);
+  }
+  window.addEventListener('resize', placeCoach);
+  document.addEventListener('click', e => { if (coachEl && e.target.closest && e.target.closest('.howi')) hideCoach(true); }, true);
+
   // In "Ө Ү only" mode, offer the all-letters tab when the font lacks Cyrillic
   let askFocus = null;
   function askAllLetters() {
-    if (mode !== 'ou' || !info || info.cyr >= 64 || (info.suggest && info.suggest.faux)) return;
+    if (mode !== 'ou' || !info || info.cyr >= 64 || (info.suggest && info.suggest.faux)) { maybeCoach(); return; }
     const miss = (info.cyrMissing || '').length;
     $('askTitle').textContent = info.cyr === 0 ? 'Энэ фонтод кирилл үсэг алга' : 'Энэ фонтод ' + miss + ' кирилл үсэг дутуу';
     $('askText').textContent = (info.cyr === 0
@@ -2785,7 +2833,7 @@ def font_info(data):
     askFocus = document.activeElement;
     $('askModal').hidden = false; $('askYes').focus();
   }
-  function closeAsk() { $('askModal').hidden = true; if (askFocus && askFocus.focus) askFocus.focus(); }
+  function closeAsk() { $('askModal').hidden = true; if (askFocus && askFocus.focus) askFocus.focus(); maybeCoach(); }
   $('askYes').onclick = () => { closeAsk(); setMode('all'); };
   $('askNo').onclick = closeAsk;
   $('askModal').addEventListener('click', e => { if (e.target === $('askModal')) closeAsk(); });
@@ -2868,7 +2916,7 @@ def font_info(data):
     $('mOU').setAttribute('aria-selected', m === 'ou'); $('mAll').setAttribute('aria-selected', m === 'all');
     document.body.classList.toggle('all', m === 'all');
     if (info) renderAlpha();
-    if (!quiet && info) { notice(); regenerate(); }
+    if (!quiet && info) { notice(); regenerate(); if (coachEl) maybeCoach(); }
   }
   $('mOU').onclick = () => setMode('ou');
   $('mAll').onclick = () => setMode('all');
