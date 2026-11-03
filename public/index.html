@@ -978,6 +978,25 @@ def _y_vs_che(font, name):
     sc = max(_iou(g, t.split("/")) for t in _TPL_CHE)
     return sy, sc
 
+
+def _skew_center(font):
+    """Height around which italic glyphs are straightened (half cap height)."""
+    c = getattr(font, "_mn_yc", None)
+    if c is not None:
+        return c
+    cmap = font.getBestCmap()
+    gs = font.getGlyphSet()
+    yc = 0.0
+    for ch in "HIE":
+        n = cmap.get(ord(ch))
+        if n:
+            P = _polys(gs, n)
+            if P:
+                yc = _bbox(P)[3] / 2
+                break
+    font._mn_yc = yc
+    return yc
+
 def _symmetry(gs, name, slant=0.0):
     """0..1: how mirror-symmetric (left/right) the glyph's filled area is
     (after removing the font's slant)."""
@@ -1075,7 +1094,7 @@ MAP_IDEAS = {
     0x041C: ("M", "none"), 0x041D: ("H", "none"), 0x041E: ("O", "none"), 0x0420: ("P", "none"),
     0x0421: ("C", "none"), 0x0422: ("T", "none"), 0x0425: ("X", "none"), 0x0423: ("Y", "none"),
     0x042F: ("R", "mirror"), 0x0418: ("N", "mirror"), 0x0419: ("N", "mirror"), 0x0413: ("L", "flip"),
-0x042C: ("P", "flip"), 0x0417: ("3", "none"), 0x041B: ("V", "flip"),
+0x042C: ("P", "flip"), 0x0417: ("3", "none"),
     0x042D: ("C", "mirror"), 0x0401: ("\u00cb", "none"),
 }
 LOWER_LOOK = {0x0430: "a", 0x0435: "e", 0x043E: "o", 0x0440: "p", 0x0441: "c", 0x0443: "y", 0x0445: "x"}
@@ -1130,8 +1149,9 @@ def _map_glyph(font, src, t, src2, pen):
     mats = {"none": (1, 0, 0, 1, 0, 0), "mirror": (-1, 0, 0, 1, w, 0),
             "flip": (1, 0, 0, -1, 0, y0 + y1), "rot": (-1, 0, 0, -1, w, y0 + y1)}
     m = mats.get(t, mats["none"])
-    if sl and t != "none":  # transform upright, then re-slant
-        m = _compose((1, 0, sl, 1, 0, 0), _compose(m, (1, 0, -sl, 1, 0, 0)))
+    if sl and t != "none":  # transform upright (around half cap height), then re-slant
+        yc = _skew_center(font)
+        m = _compose((1, 0, sl, 1, -sl * yc, 0), _compose(m, (1, 0, -sl, 1, sl * yc, 0)))
     target = ReverseContourPen(pen) if m[0] * m[3] - m[1] * m[2] < 0 else pen
     gs[src].draw(TransformPen(target, m))
     if src2 and src2 in gs:
@@ -1202,8 +1222,9 @@ def _load(font, ch):
     gs[name].draw(cc)
     pieces = [c["segs"] for c in cc.contours if c["segs"]]
     sl = _slant(font)
-    if sl:  # work upright
-        pieces = [[(sg[0],) + tuple((p[0] - sl * p[1], p[1]) for p in sg[1:]) for sg in pc] for pc in pieces]
+    if sl:  # work upright, straightened around half cap height
+        yc = _skew_center(font)
+        pieces = [[(sg[0],) + tuple((p[0] - sl * (p[1] - yc), p[1]) for p in sg[1:]) for sg in pc] for pc in pieces]
     return pieces, gs[name].width
 
 
@@ -1361,7 +1382,7 @@ def make_yu(font, M):           # Ю  ← I + bar + O
     ix0, iy0, ix1, iy1 = _bboxP(I)
     s = ix1 - ix0
     lsb = ix0
-    barlen = s * 0.9
+    barlen = max(s * 1.4, M["cap"] * 0.12)
     stem = _tx(I, (1, 0, 0, 1, lsb - ix0, 0))
     bx0 = lsb + s
     bx1 = bx0 + barlen
@@ -1587,9 +1608,47 @@ def make_yeru(font, M):         # Ы  ← Ь + stem
     leg = _tx(leg, (1, 0, 0, 1, w - lsb + lsb - lx0 + (gap - lsb) * 0.0, 0))
     return soft + leg, int(w + (lx1 - lx0) + lsb)
 
+
+def make_el(font, M):           # Л  ← right leg of H + top bar + a slanted left leg
+    H, w = _load(font, "H")
+    if not H:
+        return None
+    x0, y0, x1, y1 = _bboxP(H)
+    hl = _runs(_hitsP(H, "y", y0 + (y1 - y0) * 0.2))
+    if len(hl) < 2:
+        return None
+    (lL, lR), (rL, rR) = hl[0], hl[-1]
+    bt = M["bt"]
+    top = y1 - bt
+    right = _cut(_cut(H, "x", rL - 0.5, True), "y", top, False)
+    bar = [_rectp(lL, top, rR, y1, M["sign"])]
+    d = (y1 - y0) * 0.3
+    lw = (lR - lL) * 1.08 * (1 + (d / (y1 - y0)) ** 2) ** 0.5
+    pts = [(lL - d, y0), (lL - d + lw, y0), (lL + lw, top), (lL, top)]
+    if M["sign"] < 0:
+        pts.reverse()
+    leg = [[("l", pts[i], pts[(i + 1) % 4]) for i in range(4)]]
+    return _tx(right + bar + leg, (1, 0, 0, 1, d, 0)), int(w + d)
+
+
+def make_de_pe(font, M):        # Д  ← П on a base bar with two feet
+    r = make_pe(font, M)
+    if not r:
+        return None
+    p, w = r
+    x0, y0, x1, y1 = _bboxP(p)
+    s, bt = M["s"], M["bt"]
+    body = _cut(p, "y", y0 + bt, True)
+    ext = s * 0.7
+    bl, br = x0 - ext, x1 + ext
+    base = [_rectp(bl, y0, br, y0 + bt, M["sign"])]
+    fs = s * 1.0
+    feet = [_rectp(bl, y0 - M["desc"], bl + fs, y0, M["sign"]), _rectp(br - fs, y0 - M["desc"], br, y0, M["sign"])]
+    return _tx(body + base + feet, (1, 0, 0, 1, ext, 0)), int(w + 2 * ext)
+
 CONSTRUCT = {
     0x0427: make_che, 0x0428: make_sha, 0x0429: make_shcha, 0x0426: make_tse, 0x0416: make_zhe,
-    0x0424: make_ef, 0x042E: make_yu, 0x0414: make_de, 0x0411: make_be, 0x042A: make_hard,
+    0x0424: make_ef, 0x042E: make_yu, 0x0414: lambda f, M: make_de_pe(f, M) or make_de(f, M), 0x041B: make_el, 0x0411: make_be, 0x042A: make_hard,
     0x042D: make_e_rev, 0x0401: make_yo, 0x0419: make_short_i, 0x041F: make_pe, 0x042B: make_yeru,
 }
 
@@ -1608,7 +1667,7 @@ def construct(font, cp, pen):
         return None
     pieces, w = r
     sl = _slant(font)
-    out = TransformPen(pen, (1, 0, sl, 1, 0, 0)) if sl else pen
+    out = TransformPen(pen, (1, 0, sl, 1, -sl * _skew_center(font), 0)) if sl else pen
     # monospaced fonts keep every advance equal: squeeze to the common width
     try:
         if font["post"].isFixedPitch:
@@ -1777,6 +1836,7 @@ def build(data, opts):
         report.append(f"{chr(cp)}: «{chr(_rev(cmap, src))}» {how} үүсгэлээ")
 
     umap = opts.get("map") or {}
+    no_kern = set()
     if umap:
         cmap_now = font.getBestCmap()
         done = []
@@ -1803,6 +1863,7 @@ def build(data, opts):
                     continue
                 anysrc = cmap_now.get(ord("H")) or cmap_now.get(ord("I")) or list(cmap_now.values())[0]
                 new_glyphs[gname] = (ucp, anysrc, width, pen)
+                no_kern.add(gname)
                 if lcp and lcp not in cmap_now:
                     lower_jobs.append((lcp, gname, ("make", ucp), anysrc))
                 done.append(chr(ucp) + "⚙")
@@ -1834,6 +1895,7 @@ def build(data, opts):
                 dpen = Cu2QuPen(pen, max_err=1.0, reverse_direction=False)
             width = _map_glyph(font, src, t, src2, dpen)
             new_glyphs[gname] = (ucp, src, width, pen)
+            no_kern.add(gname)
             if lcp and lcp not in cmap_now:
                 lower_jobs.append((lcp, gname, ("map", src, t, src2), src))
             done.append(chr(ucp))
@@ -1861,6 +1923,7 @@ def build(data, opts):
                 mapped.append((lcp, upname))
                 continue
             new_glyphs[gname] = (lcp, ksrc, int(round(w * kx)), pen)
+            no_kern.add(gname)
         if done:
             report.append("Кирилл үсэг нэмэв: " + " ".join(done)
                           + (" (жижиг үсгийг жижиг том үсгээр)" if sc else ""))
@@ -1953,7 +2016,8 @@ def build(data, opts):
             if not hasattr(st, "kernTable"):
                 continue
             kt = st.kernTable
-            src_map = {g: [n for n, v in new_glyphs.items() if v[1] == g] for g in {v[1] for v in new_glyphs.values()}}
+            src_map = {g: [n for n, v in new_glyphs.items() if v[1] == g and n not in no_kern]
+                       for g in {v[1] for v in new_glyphs.values()}}
             add = {}
             for (l, r), v in kt.items():
                 for nl in [l] + src_map.get(l, []):
@@ -2151,7 +2215,8 @@ def font_info(data):
     'Ж': [['K', 'H'], 'K үсгийн гарыг толин тусгалаар хоёр тал руу нь тавьж, дунд нь иш нэмсэн.'],
     'Ф': [['O'], 'O үсгийг голоор нь хувааж, хооронд нь иш нэмсэн.'],
     'Ю': [['H', 'O'], 'H-ийн иш, богино хөндлөн зураас, O үсгийг залгасан.'],
-    'Д': [['A'], 'A үсгийн дээд гурвалжинг доош сунгаж, суурь зураас болон хоёр хөл нэмсэн.'],
+    'Д': [['H'], 'H-ийн иш болон дээд зураасаар П үүсгээд, доор нь суурь зураас, хоёр хөл нэмсэн.'],
+    'Л': [['H'], 'H-ийн баруун иш, дээд зураас, налуу зүүн хөлөөр угсарсан.'],
     'Б': [['P', 'E'], 'P-г урвуулж Ь болгоод, дээр нь E үсгийн дээд гарыг нэмсэн.'],
     'Ъ': [['T', 'P'], 'T үсгийн зүүн гарыг урвуулсан P (Ь)-д залгасан.'],
     'Э': [['C'], 'C үсгийг толин тусгал болгож, дунд нь хөндлөн зураас нэмсэн.'],
