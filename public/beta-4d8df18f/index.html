@@ -98,6 +98,15 @@
   .alpha .tile .g{font-size:40px;padding-bottom:0}
   .alpha .tile.new::before{top:8px;right:8px;width:5px;height:5px}
   .alpha .tile.edited::after{top:4px;left:7px;font-size:11px}
+  .alpha .tile .ed-hit{position:absolute;inset:0;border:0;background:transparent;border-radius:inherit;cursor:pointer}
+  .alpha .tile .ed-hit:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .alpha .tile .g{pointer-events:none}
+  .howi{position:absolute;right:4px;bottom:4px;width:20px;height:20px;border-radius:50%;border:1px solid var(--line2);background:var(--surface);color:var(--soft);font:600 11px/1 Inter,sans-serif;cursor:pointer;display:grid;place-items:center;padding:0;opacity:.75}
+  .howi:hover,.howi:focus-visible{opacity:1;color:var(--accent);border-color:var(--accent)}
+  .ed .top .howbtn2{font:500 12.5px/1 Inter,sans-serif;padding:8px 12px;border-radius:99px;border:1px solid var(--line2);background:var(--surface);color:var(--ink);cursor:pointer}
+  .ed .top .howbtn2[hidden]{display:none}
+  .howi.big{width:28px;height:28px;font-size:13px;right:12px;bottom:12px}
+  #howModal{z-index:60}
   .tile .cap{position:absolute;left:0;right:0;bottom:14px;text-align:center;font-size:12px;color:var(--faint);letter-spacing:.01em}
   .tile .cap i{font-style:normal;color:var(--soft)}
   .tile.new::before{content:"";position:absolute;top:14px;right:14px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
@@ -324,6 +333,7 @@
       <h3 id="edTitle">Үсэг засах</h3>
       <span class="meta" id="edWidth"></span>
       <span class="gap"></span>
+      <button type="button" class="howbtn2" id="edHow" title="Програм энэ үсгийг хэрхэн үүсгэснийг харах">Хэрхэн үүсгэсэн бэ?</button>
       <button type="button" class="icon" id="edHelpBtn" aria-expanded="false" title="Товчлолууд">?</button>
     </div>
     <div class="letters" id="edLetters" role="toolbar" aria-label="Засах үсэг"></div>
@@ -2890,11 +2900,47 @@ def font_info(data):
     const m = $('howModal'); m.hidden = false; $('howClose').focus();
   }
   let lastHowFocus = null, howCh = null;
-  $('howEdit').addEventListener('click', () => { $('howModal').hidden = true; openEditor(howCh.codePointAt(0)); });
+  $('howEdit').addEventListener('click', () => {
+    $('howModal').hidden = true;
+    const cp = howCh.codePointAt(0);
+    if (E) { if (E.present.has(cp)) selectLetter(cp); } else openEditor(cp);
+  });
+  function showCustom(ch, srcs, text) {
+    showHow(ch, { make: true });
+    const eq = $('howEq'); eq.innerHTML = '';
+    srcs.forEach((src, i) => {
+      if (i) { const op = document.createElement('span'); op.className = 'op'; op.textContent = '+'; eq.appendChild(op); }
+      eq.appendChild(glyphTile(src, 'эх үсэг'));
+    });
+    const ar = document.createElement('span'); ar.className = 'op'; ar.textContent = '→';
+    eq.append(ar, glyphTile(ch, 'үр дүн', true));
+    $('howText').textContent = text + ' Жижиг «' + ch.toLowerCase() + '» нь үүнтэй ижил хэлбэртэй.';
+  }
+  function fauxMap() { // "B→Б Y→Ч" → {Б: 'B', Ч: 'Y'}
+    const m = {};
+    (info && info.fauxFound || '').split(/\s+/).forEach(p => { const [a, b] = p.split('→'); if (a && b && !m[b]) m[b] = a.toUpperCase(); });
+    return m;
+  }
+  function howFor(up) { // explain any generated letter, by its capital's code point
+    const ch = String.fromCodePoint(up);
+    if (up === 0x04E8) return showCustom(ch, ['O'], 'O үсгийн дотор хөндлөн зураас нэмсэн.');
+    if (up === 0x04AE) {
+      const k = info && info.ue && info.ue[0];
+      if (k && k[0] === 'copy') return showCustom(ch, [k[1]], '«' + k[1] + '» үсгийг шууд хуулсан.');
+      if (k && (k[0] === 'fork' || k[0] === 'xfork')) return showCustom(ch, [k[1], 'I'], '«' + k[1] + '» үсгийн доор шулуун хөл залгасан.');
+      if (k && k[0] === 'stem') return showCustom(ch, [k[1]], '«' + k[1] + '» үсэгт доош сүүл нэмсэн.');
+      return showCustom(ch, ['Y'], 'Y үсгээс үүсгэсэн.');
+    }
+    const fx = fauxMap();
+    if (fx[ch]) return showCustom(ch, [fx[ch]], 'Энэ фонтын «' + fx[ch] + '» үсгийн байранд ' + ch + ' хэлбэр зурагдсан байсныг таньж, шууд ашигласан.');
+    const st = (autoMap() || {})[up];
+    if (st) return showHow(ch, st);
+    showCustom(ch, [], 'Латин үсгүүдээс ижил хэлбэртэйг нь хуулсан.');
+  }
   function hideHow() { $('howModal').hidden = true; if (lastHowFocus && lastHowFocus.focus) lastHowFocus.focus(); }
   $('howClose').addEventListener('click', hideHow);
   $('howModal').addEventListener('click', e => { if (e.target === $('howModal')) hideHow(); });
-  $('howModal').addEventListener('keydown', e => { if (e.key === 'Escape') hideHow(); });
+  $('howModal').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); hideHow(); } });
 
   // ----- all-letters grid -----
   function renderAlpha() {
@@ -2904,13 +2950,20 @@ def font_info(data):
     ALL_CPS.forEach((cp, i) => {
       if (i === 35) { const br = document.createElement('div'); br.style.cssText = 'grid-column:1/-1;height:6px'; box.appendChild(br); }
       const ch = String.fromCodePoint(cp), up = cp >= 0x0430 && cp <= 0x044F ? cp - 0x20 : cp === 0x0451 ? 0x0401 : cp === 0x04E9 ? 0x04E8 : cp === 0x04AF ? 0x04AE : cp;
-      const t = document.createElement('button'); t.type = 'button'; t.className = 'tile';
-      if (!had.has(up)) t.classList.add('new');
+      const t = document.createElement('div'); t.className = 'tile';
+      const hit = document.createElement('button'); hit.type = 'button'; hit.className = 'ed-hit';
+      hit.setAttribute('aria-label', ch + ' үсгийг засах'); hit.title = 'Засах';
+      hit.onclick = () => openEditor(cp);
       const g = document.createElement('div'); g.className = 'g pv'; g.textContent = ch;
       if (currentFace) g.style.fontFamily = '"' + currentFace.family + '", Inter, sans-serif';
-      t.appendChild(g);
-      t.setAttribute('aria-label', ch + ' үсгийг засах');
-      t.onclick = () => openEditor(cp);
+      t.append(hit, g);
+      if (!had.has(up)) t.classList.add('new');
+      if (!had.has(up) || fauxMap()[String.fromCodePoint(up)]) {
+        const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'howi'; hb.textContent = '?';
+        hb.title = 'Хэрхэн үүсгэснийг харах'; hb.setAttribute('aria-label', ch + ' үсгийг хэрхэн үүсгэснийг харах');
+        hb.onclick = e => { e.stopPropagation(); howFor(up); };
+        t.appendChild(hb);
+      }
       box.appendChild(t);
     });
     markEdited();
@@ -2973,6 +3026,7 @@ def font_info(data):
     const cur = box.querySelector('[aria-pressed=true]');
     if (cur) cur.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     $('edTitle').textContent = '«' + String.fromCodePoint(E.cp) + '» үсгийг засах';
+    $('edHow').hidden = !isGenerated(E.cp);
   }
   const W = () => E.work[E.cp];
   const M = () => E.base[E.cp];
@@ -3441,6 +3495,14 @@ def font_info(data):
   $('zOut').onclick = () => zoomCenter(0.8);
   $('zFit').onclick = () => { fitView(); render(); };
   $('tReset').onclick = () => { push(); const m = M(); W().width = m.width; W().contours = clone(m.contours); E.sel = new Set(); render(); };
+  function upOf(cp) { return cp >= 0x0430 && cp <= 0x044F ? cp - 0x20 : cp === 0x0451 ? 0x0401 : cp === 0x04E9 ? 0x04E8 : cp === 0x04AF ? 0x04AE : cp; }
+  function isGenerated(cp) {
+    const up = upOf(cp);
+    if (up === 0x04E8 || up === 0x04AE) return true;
+    const l = info && info.suggest && info.suggest.letters.find(x => x.cp === up);
+    return !!(l && !l.has) || !!fauxMap()[String.fromCodePoint(up)];
+  }
+  $('edHow').onclick = () => howFor(upOf(E.cp));
   $('edHelpBtn').onclick = () => { const h = $('edHelp'), open = h.hidden; h.hidden = !open; $('edHelpBtn').setAttribute('aria-expanded', open); };
   function closeEditor() { $('edModal').hidden = true; $('edHelp').hidden = true; $('edHelpBtn').setAttribute('aria-expanded', false); E = null; if (lastEdFocus && lastEdFocus.focus) lastEdFocus.focus(); }
   $('edCancel').onclick = closeEditor;
@@ -3456,7 +3518,7 @@ def font_info(data):
     if (changed) { regenerate(); msg('Засварыг хадгаллаа. Татахад таны зурсан хэлбэр орно.'); }
   };
   document.addEventListener('keydown', ev => {
-    if (!E || $('edModal').hidden) return;
+    if (!E || $('edModal').hidden || !$('howModal').hidden) return;
     const k = ev.key, mod = ev.ctrlKey || ev.metaKey, lk = k.toLowerCase();
     if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'TEXTAREA') return;
     if (k === ' ' && !E.space) { E.space = true; canvas.classList.add('pan'); ev.preventDefault(); return; }
@@ -3497,6 +3559,13 @@ def font_info(data):
   }, { passive: false });
   $('editBtn').onclick = () => openEditor(0x04E8);
   document.querySelectorAll('.tiles .tile').forEach(t => t.addEventListener('click', () => openEditor(t.querySelector('.g').textContent.codePointAt(0))));
+  document.querySelectorAll('.tiles .tile').forEach(t => {
+    const cp = t.querySelector('.g').textContent.codePointAt(0);
+    const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'howi big'; hb.textContent = '?';
+    hb.title = 'Хэрхэн үүсгэснийг харах'; hb.setAttribute('aria-label', String.fromCodePoint(cp) + ' үсгийг хэрхэн үүсгэснийг харах');
+    hb.onclick = e => { e.stopPropagation(); howFor(upOf(cp)); };
+    t.appendChild(hb);
+  });
 
   // ----- download counter (private: counted, never shown) -----
   function countDownload(ext) {
