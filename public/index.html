@@ -134,6 +134,23 @@
   nav .links{display:flex;align-items:center;gap:10px}
   nav .navlink{font-size:13px;color:var(--soft);text-decoration:none;padding:6px 12px;border-radius:99px}
   nav .navlink:hover{color:var(--ink);background:var(--surface)}
+
+  .howbtn{font:inherit;font-size:11px;color:var(--accent);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+  .howchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .howchips button{font:inherit;font-size:14px;font-weight:600;min-width:38px;padding:6px 10px;border-radius:10px;border:1px solid var(--line2);background:var(--surface);color:var(--ink);cursor:pointer}
+  .howchips button:hover{border-color:var(--accent)}
+  .modal{position:fixed;inset:0;background:rgba(10,10,12,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .modal[hidden]{display:none}
+  .modal .box{background:var(--surface);color:var(--ink);border-radius:24px;max-width:520px;width:100%;padding:26px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .modal h3{font:700 18px/1.3 Unbounded,sans-serif;letter-spacing:-.02em;margin-bottom:16px}
+  .modal .eq{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+  .modal .gl{background:var(--tile);border-radius:16px;min-width:92px;padding:8px 12px 6px;text-align:center}
+  .modal .gl .g{font-size:72px;line-height:1.15}
+  .modal .gl small{display:block;font-size:11px;color:var(--faint)}
+  .modal .gl.res{outline:2px solid var(--accent)}
+  .modal .op{font-size:26px;color:var(--faint)}
+  .modal p{color:var(--soft);font-size:15px;line-height:1.5;margin-bottom:18px}
+  .modal .close{float:right}
   footer{margin-top:48px;text-align:center;color:var(--faint);font-size:12.5px}
   footer .sep{margin:0 6px}
   footer .by{color:var(--soft);font-weight:500}
@@ -179,6 +196,10 @@
   </div>
 
   <div class="notice" id="notice"></div>
+  <div class="notice show" id="howBox" hidden style="color:var(--soft);background:var(--surface);border:1px solid var(--line)">
+    Програмаар үүсгэсэн үсгүүд. Дарж хэрхэн үүсгэснийг харна уу:
+    <div class="howchips" id="howChips"></div>
+  </div>
 
   <section class="stage">
     <div class="tiles">
@@ -195,6 +216,16 @@
 
 
   <footer><a href="/sanal" style="color:inherit">Санал хүсэлт</a> <span class="sep">·</span> Фонтын лиценз өөрчлөхийг зөвшөөрдөг эсэхийг шалгаарай. <span class="sep">·</span> <span class="by">А.Хонгор</span></footer>
+</div>
+
+<div class="modal" id="howModal" hidden role="dialog" aria-modal="true" aria-labelledby="howTitle">
+  <div class="box">
+    <h3 id="howTitle"></h3>
+    <div class="eq" id="howEq"></div>
+    <p id="howText"></p>
+    <button class="btn ghost close" type="button" id="howClose">Хаах</button>
+    <div style="clear:both"></div>
+  </div>
 </div>
 
 <script type="text/plain" id="pysrc">"""Add Mongolian Cyrillic Ө ө Ү ү to a font (TTF / OTF-CFF / WOFF).
@@ -2042,6 +2073,20 @@ def font_info(data):
       n.appendChild(a);
     }
     n.classList.toggle('show', !!t);
+    renderHowChips();
+  }
+  function renderHowChips() {
+    const box = $('howChips'); box.innerHTML = '';
+    const m = autoMap() || {};
+    const keys = Object.keys(m).filter(k => m[k].make || m[k].t !== 'none' || m[k].src2);
+    keys.forEach(k => {
+      const ch = String.fromCharCode(+k), st = m[k];
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = ch;
+      b.setAttribute('aria-label', ch + ' үсгийг хэрхэн үүсгэснийг харах');
+      b.onclick = () => showHow(ch, st);
+      box.appendChild(b);
+    });
+    $('howBox').hidden = !keys.length;
   }
 
   function captions() {
@@ -2096,6 +2141,62 @@ def font_info(data):
     info.suggest.letters.forEach(l => { if (!l.has && l.sug) m[l.cp] = l.sug; });
     return Object.keys(m).length ? m : null;
   }
+
+  // ----- "how was this letter made?" -----
+  const RECIPES = {
+    'Ч': [['H'], 'H үсгийн зүүн доод хөлийг хасаж угсарсан.'],
+    'Ш': [['U'], 'U үсгийг голоор нь хувааж, хооронд нь иш нэмж угсарсан.'],
+    'Щ': [['U'], 'Ш-ийн адилаар угсраад, баруун доод буланд сүүл нэмсэн.'],
+    'Ц': [['U'], 'U үсгийн баруун доод буланд сүүл нэмж угсарсан.'],
+    'Ж': [['K', 'H'], 'K үсгийн гарыг толин тусгалаар хоёр тал руу нь тавьж, дунд нь иш нэмсэн.'],
+    'Ф': [['O'], 'O үсгийг голоор нь хувааж, хооронд нь иш нэмсэн.'],
+    'Ю': [['H', 'O'], 'H-ийн иш, богино хөндлөн зураас, O үсгийг залгасан.'],
+    'Д': [['A'], 'A үсгийн дээд гурвалжинг доош сунгаж, суурь зураас болон хоёр хөл нэмсэн.'],
+    'Б': [['P', 'E'], 'P-г урвуулж Ь болгоод, дээр нь E үсгийн дээд гарыг нэмсэн.'],
+    'Ъ': [['T', 'P'], 'T үсгийн зүүн гарыг урвуулсан P (Ь)-д залгасан.'],
+    'Э': [['C'], 'C үсгийг толин тусгал болгож, дунд нь хөндлөн зураас нэмсэн.'],
+    'Ё': [['E'], 'E үсгийн дээр хоёр цэг нэмсэн.'],
+    'Й': [['N'], 'N-ийг толин тусгал болгож (И), дээр нь тэмдэг нэмсэн.'],
+    'П': [['H'], 'H үсгийн хоёр ишийг аваад, хөндлөн зураасыг нь дээр шилжүүлсэн.'],
+    'Ы': [['P', 'H'], 'Урвуулсан P (Ь)-ийн хажууд H-ийн ишийг залгасан.'],
+    'Ө': [['O'], 'O үсгийн дотор хөндлөн зураас нэмсэн.'],
+  };
+  const TFTXT = { none: 'хэлбэрийг шууд ашигласан', mirror: 'толин тусгал болгосон (↔)', flip: 'дээш доош нь урвуулсан (↕)', rot: '180° эргүүлсэн (⟲)' };
+  function glyphTile(ch, label, res) {
+    const d = document.createElement('div'); d.className = 'gl' + (res ? ' res' : '');
+    const g = document.createElement('div'); g.className = 'g';
+    g.textContent = ch;
+    if (currentFace) g.style.fontFamily = '"' + currentFace.family + '", Inter, sans-serif';
+    const s = document.createElement('small'); s.textContent = label;
+    d.append(g, s); return d;
+  }
+  function showHow(ch, st) {
+    const eq = $('howEq'); eq.innerHTML = '';
+    let text = '';
+    if (st && st.make || !st) {
+      const r = RECIPES[ch] || [[], 'Фонтын өөрийн хэсгүүдээс угсарсан.'];
+      r[0].forEach((src, i) => {
+        if (i) { const op = document.createElement('span'); op.className = 'op'; op.textContent = '+'; eq.appendChild(op); }
+        eq.appendChild(glyphTile(src, 'эх үсэг'));
+      });
+      text = r[1];
+    } else {
+      eq.appendChild(glyphTile(st.src, 'эх үсэг'));
+      if (st.src2) { const op = document.createElement('span'); op.className = 'op'; op.textContent = '+'; eq.append(op, glyphTile(st.src2, 'эх үсэг')); }
+      text = '«' + st.src + '» үсгийн ' + (TFTXT[st.t] || TFTXT.none) + (st.src2 ? ', хажууд нь «' + st.src2 + '»-г залгасан.' : '.');
+    }
+    const ar = document.createElement('span'); ar.className = 'op'; ar.textContent = '→';
+    eq.append(ar, glyphTile(ch, 'үр дүн', true));
+    $('howTitle').textContent = ch + ' үсгийг хэрхэн үүсгэсэн бэ';
+    $('howText').textContent = text + ' Жижиг «' + ch.toLowerCase() + '» нь үүнтэй ижил хэлбэртэй.';
+    lastHowFocus = document.activeElement;
+    const m = $('howModal'); m.hidden = false; $('howClose').focus();
+  }
+  let lastHowFocus = null;
+  function hideHow() { $('howModal').hidden = true; if (lastHowFocus && lastHowFocus.focus) lastHowFocus.focus(); }
+  $('howClose').addEventListener('click', hideHow);
+  $('howModal').addEventListener('click', e => { if (e.target === $('howModal')) hideHow(); });
+  $('howModal').addEventListener('keydown', e => { if (e.key === 'Escape') hideHow(); });
 
   // ----- download counter (private: counted, never shown) -----
   function countDownload(ext) {
