@@ -264,7 +264,7 @@
 
   <section class="hero">
     <h1>Фонтоо <em>монгол</em><br>болгоё.</h1>
-    <p class="lead">Ө ө Ү ү үсгийг фонтын өөрийн хэлбэрээс нь автоматаар үүсгэнэ. Файл тань таны төхөөрөмжөөс гарахгүй.</p>
+    <p class="lead">Ө ө Ү ү, мөн дутуу кирилл үсгүүдийг фонтын өөрийн хэлбэрээс нь автоматаар үүсгэнэ. Файл тань таны төхөөрөмжөөс гарахгүй.</p>
   </section>
 
   <label class="drop" id="drop">
@@ -2710,7 +2710,7 @@ def font_info(data):
   let py = null, srcBytes = null, srcName = '', info = null, faceN = 0, currentFace = null, overwrite = false;
   const BETA = false;
   let mode = BETA ? 'all' : 'ou', edits = {}, baseBytes = null;
-  try { if (BETA && localStorage.getItem('ou-mode') === 'ou') mode = 'ou'; } catch (e) {}
+  try { const sm = localStorage.getItem('ou-mode'); if (sm === 'ou' || sm === 'all') mode = sm; } catch (e) {}
 
   function engine(state, text) {
     $('engine').className = 'engine ' + state;
@@ -2833,7 +2833,6 @@ def font_info(data):
   // ----- mode tabs -----
   const OU = [0x04E8, 0x04E9, 0x04AE, 0x04AF];
   function setMode(m, quiet) {
-    if (!BETA) m = 'ou';
     mode = m;
     try { localStorage.setItem('ou-mode', m); } catch (e) {}
     $('mOU').setAttribute('aria-selected', m === 'ou'); $('mAll').setAttribute('aria-selected', m === 'all');
@@ -2843,10 +2842,8 @@ def font_info(data):
   }
   $('mOU').onclick = () => setMode('ou');
   $('mAll').onclick = () => setMode('all');
-  if (!BETA) {
-    const b = $('mAll'); b.disabled = true; b.title = 'Удахгүй';
-    b.innerHTML = 'Бүх үсэг <span class="beta">beta</span>';
-  }
+  $('mAll').innerHTML = 'Бүх үсэг <span class="beta">beta</span>';
+  $('mAll').title = 'Туршилтын боломж: дутуу бүх кирилл үсгийг үүсгэнэ';
   setMode(mode, true);
 
   async function regenerate() {
