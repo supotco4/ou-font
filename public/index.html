@@ -156,6 +156,8 @@
   body.loaded .modes{display:flex}
   .modes button{font:600 14px/1 Inter,sans-serif;border:0;background:transparent;color:var(--soft);padding:11px 20px;border-radius:99px;cursor:pointer;transition:.15s}
   .modes button[aria-selected=true]{background:var(--ink);color:var(--bg)}
+  .modes button:disabled{cursor:default;opacity:.55}
+  .modes .beta{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:99px;border:1px solid var(--line2);margin-left:4px;vertical-align:1px}
   .modes button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .tile{cursor:pointer}
   .tile:hover{outline:1.5px solid var(--line2)}
@@ -219,7 +221,7 @@
 
   <section class="hero">
     <h1>Фонтоо <em>монгол</em><br>болгоё.</h1>
-    <p class="lead">Ө ө Ү ү, мөн дутуу кирилл үсгүүдийг фонтын өөрийн хэлбэрээс нь автоматаар үүсгэнэ. Файл тань таны төхөөрөмжөөс гарахгүй.</p>
+    <p class="lead">Ө ө Ү ү үсгийг фонтын өөрийн хэлбэрээс нь автоматаар үүсгэнэ. Файл тань таны төхөөрөмжөөс гарахгүй.</p>
   </section>
 
   <label class="drop" id="drop">
@@ -2369,8 +2371,9 @@ def font_info(data):
 (() => {
   const $ = id => document.getElementById(id);
   let py = null, srcBytes = null, srcName = '', info = null, faceN = 0, currentFace = null, overwrite = false;
-  let mode = 'all', edits = {}, baseBytes = null;
-  try { if (localStorage.getItem('ou-mode') === 'ou') mode = 'ou'; } catch (e) {}
+  const BETA = false;
+  let mode = BETA ? 'all' : 'ou', edits = {}, baseBytes = null;
+  try { if (BETA && localStorage.getItem('ou-mode') === 'ou') mode = 'ou'; } catch (e) {}
 
   function engine(state, text) {
     $('engine').className = 'engine ' + state;
@@ -2490,6 +2493,7 @@ def font_info(data):
   // ----- mode tabs -----
   const OU = [0x04E8, 0x04E9, 0x04AE, 0x04AF];
   function setMode(m, quiet) {
+    if (!BETA) m = 'ou';
     mode = m;
     try { localStorage.setItem('ou-mode', m); } catch (e) {}
     $('mOU').setAttribute('aria-selected', m === 'ou'); $('mAll').setAttribute('aria-selected', m === 'all');
@@ -2497,6 +2501,10 @@ def font_info(data):
   }
   $('mOU').onclick = () => setMode('ou');
   $('mAll').onclick = () => setMode('all');
+  if (!BETA) {
+    const b = $('mAll'); b.disabled = true; b.title = 'Удахгүй';
+    b.innerHTML = 'Бүх үсэг <span class="beta">beta</span>';
+  }
   setMode(mode, true);
 
   async function regenerate() {
