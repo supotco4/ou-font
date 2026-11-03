@@ -152,8 +152,8 @@
   .modal .op{font-size:26px;color:var(--faint)}
   .modal p{color:var(--soft);font-size:15px;line-height:1.5;margin-bottom:18px}
   .modal .close{float:right}
-  .modes{display:none;gap:4px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:99px;box-shadow:var(--shadow);width:max-content;margin:0 auto 16px}
-  body.loaded .modes{display:flex}
+  .modes{display:flex;gap:4px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:99px;box-shadow:var(--shadow);width:max-content;margin:0 auto 16px}
+  body:not(.loaded) .modes{margin-top:20px}
   .modes button{font:600 14px/1 Inter,sans-serif;border:0;background:transparent;color:var(--soft);padding:11px 20px;border-radius:99px;cursor:pointer;transition:.15s}
   .modes button[aria-selected=true]{background:var(--ink);color:var(--bg)}
   .modes button:disabled{cursor:default;opacity:.55}
