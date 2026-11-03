@@ -91,6 +91,13 @@
   .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
   .tile{background:var(--tile);border-radius:20px;aspect-ratio:1/1.08;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
   .tile .g{font-size:clamp(72px,12vw,150px);line-height:1;padding-bottom:6%}
+  .alpha{display:none;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
+  body.all .alpha{display:grid}
+  body.all .tiles{display:none}
+  .alpha .tile{border:0;font:inherit;color:inherit;padding:0;aspect-ratio:1/1.12;border-radius:14px}
+  .alpha .tile .g{font-size:40px;padding-bottom:0}
+  .alpha .tile.new::before{top:8px;right:8px;width:5px;height:5px}
+  .alpha .tile.edited::after{top:4px;left:7px;font-size:11px}
   .tile .cap{position:absolute;left:0;right:0;bottom:14px;text-align:center;font-size:12px;color:var(--faint);letter-spacing:.01em}
   .tile .cap i{font-style:normal;color:var(--soft)}
   .tile.new::before{content:"";position:absolute;top:14px;right:14px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
@@ -260,6 +267,7 @@
       <div class="tile new"><div class="g pv">Ү</div><div class="cap" id="c2"></div></div>
       <div class="tile new"><div class="g pv">ү</div><div class="cap" id="c3"></div></div>
     </div>
+    <div class="alpha" id="alpha" aria-label="Бүх үсэг"></div>
     <textarea class="sample pv" id="sample" spellcheck="false" rows="4">Өглөөний нар өндөр уулын оройд гэрэлтэв. Үүр цайх үеэр хүүхдүүд өөдрөг дуулав.
 АБВГДЕЁЖЗИЙКЛМНОӨПРСТУҮФХЦЧШЩЪЫЬЭЮЯ</textarea>
     <div class="foot"><span class="hint">Текстийг засаж туршиж болно · үсэг дээр дарж өөрөө засна</span>
@@ -2421,6 +2429,7 @@ def font_info(data):
     window.scrollTo({ top: 0, behavior: 'smooth' });
     notice();
     captions();
+    renderAlpha();
     regenerate();
   }
 
@@ -2498,6 +2507,8 @@ def font_info(data):
     mode = m;
     try { localStorage.setItem('ou-mode', m); } catch (e) {}
     $('mOU').setAttribute('aria-selected', m === 'ou'); $('mAll').setAttribute('aria-selected', m === 'all');
+    document.body.classList.toggle('all', m === 'all');
+    if (info) renderAlpha();
     if (!quiet && info) { notice(); regenerate(); }
   }
   $('mOU').onclick = () => setMode('ou');
@@ -2522,7 +2533,7 @@ def font_info(data):
       if (currentFace) document.fonts.delete(currentFace);
       currentFace = face;
       document.querySelectorAll('.pv').forEach(el => { el.style.fontFamily = '"' + face.family + '", Inter, sans-serif'; });
-      document.querySelectorAll('.tile').forEach(t => t.classList.toggle('edited', !!activeEdits()[t.querySelector('.g').textContent.codePointAt(0)]));
+      markEdited();
     } catch (e) { msg('Алдаа гарлаа: ' + shortErr(e)); }
   }
 
@@ -2594,6 +2605,30 @@ def font_info(data):
   $('howClose').addEventListener('click', hideHow);
   $('howModal').addEventListener('click', e => { if (e.target === $('howModal')) hideHow(); });
   $('howModal').addEventListener('keydown', e => { if (e.key === 'Escape') hideHow(); });
+
+  // ----- all-letters grid -----
+  function renderAlpha() {
+    const box = $('alpha'); box.innerHTML = '';
+    if (mode !== 'all' || !info) return;
+    const had = new Set((info.suggest && info.suggest.letters || []).filter(l => l.has).map(l => l.cp));
+    ALL_CPS.forEach((cp, i) => {
+      if (i === 35) { const br = document.createElement('div'); br.style.cssText = 'grid-column:1/-1;height:6px'; box.appendChild(br); }
+      const ch = String.fromCodePoint(cp), up = cp >= 0x0430 && cp <= 0x044F ? cp - 0x20 : cp === 0x0451 ? 0x0401 : cp === 0x04E9 ? 0x04E8 : cp === 0x04AF ? 0x04AE : cp;
+      const t = document.createElement('button'); t.type = 'button'; t.className = 'tile';
+      if (!had.has(up)) t.classList.add('new');
+      const g = document.createElement('div'); g.className = 'g pv'; g.textContent = ch;
+      if (currentFace) g.style.fontFamily = '"' + currentFace.family + '", Inter, sans-serif';
+      t.appendChild(g);
+      t.setAttribute('aria-label', ch + ' үсгийг засах');
+      t.onclick = () => openEditor(cp);
+      box.appendChild(t);
+    });
+    markEdited();
+  }
+  function markEdited() {
+    const ae = activeEdits();
+    document.querySelectorAll('.tile').forEach(t => t.classList.toggle('edited', !!ae[t.querySelector('.g').textContent.codePointAt(0)]));
+  }
 
   // ----- glyph editor -----
   const ALPHA = 'АБВГДЕЁЖЗИЙКЛМНОӨПРСТУҮФХЦЧШЩЪЫЬЭЮЯ';
@@ -2974,7 +3009,7 @@ def font_info(data):
     box.scrollLeft += ev.deltaMode === 1 ? d * 36 : d;
   }, { passive: false });
   $('editBtn').onclick = () => openEditor(0x04E8);
-  document.querySelectorAll('.tile').forEach(t => t.addEventListener('click', () => openEditor(t.querySelector('.g').textContent.codePointAt(0))));
+  document.querySelectorAll('.tiles .tile').forEach(t => t.addEventListener('click', () => openEditor(t.querySelector('.g').textContent.codePointAt(0))));
 
   // ----- download counter (private: counted, never shown) -----
   function countDownload(ext) {
