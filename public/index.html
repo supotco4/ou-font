@@ -106,6 +106,23 @@
   .ed .top .howbtn2[hidden]{display:none}
   .howi.big{width:28px;height:28px;font-size:13px;right:12px;bottom:12px}
   #howModal{z-index:60}
+  .recipes{display:none;margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow);padding:24px}
+  body.all.loaded .recipes:not(:empty){display:block}
+  .recipes h2{font:700 20px/1.2 Unbounded,sans-serif;letter-spacing:-.02em;margin:0 0 4px}
+  .recipes .sub{color:var(--soft);font-size:14px;margin-bottom:16px}
+  .rgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .rcard{background:var(--tile);border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;position:relative}
+  .rcard .eq{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .rcard .sg{font-size:40px;line-height:1;min-width:52px;height:60px;padding:0 6px;border-radius:12px;background:var(--surface);display:grid;place-items:center;position:relative}
+  .rcard .sg i{position:absolute;right:-6px;top:-6px;font:700 11px/1 Inter,sans-serif;font-style:normal;color:#fff;background:var(--accent);border-radius:99px;padding:3px 5px}
+  .rcard .op{color:var(--faint);font-size:18px}
+  .rcard .rs{margin-left:auto;font-size:44px;line-height:1;height:64px;padding:0 12px;border-radius:12px;background:var(--surface);outline:2px solid var(--accent);outline-offset:-2px;display:grid;place-items:center;letter-spacing:4px}
+  .rcard p{margin:0;font-size:13.5px;line-height:1.45;color:var(--soft)}
+  .rcard p b{color:var(--ink);font-weight:600}
+  .rcard .redit{position:absolute;right:10px;bottom:10px;font:500 12px/1 Inter,sans-serif;border:1px solid var(--line2);background:var(--surface);color:var(--soft);border-radius:99px;padding:6px 9px;cursor:pointer}
+  .rcard .redit:hover{color:var(--accent);border-color:var(--accent)}
+  .rcard p{padding-right:64px}
+  @media (max-width:640px){.rgrid{grid-template-columns:1fr}}
   .howi.pulse{animation:howpulse 1.6s ease-out infinite;opacity:1;color:var(--accent);border-color:var(--accent)}
   @keyframes howpulse{0%{box-shadow:0 0 0 0 rgba(47,84,235,.55)}70%{box-shadow:0 0 0 12px rgba(47,84,235,0)}100%{box-shadow:0 0 0 0 rgba(47,84,235,0)}}
   .coach{position:absolute;z-index:40;background:var(--ink);color:var(--bg);font:500 14px/1.35 Inter,sans-serif;padding:12px 38px 12px 14px;border-radius:14px;max-width:250px;box-shadow:0 12px 30px -8px rgba(0,0,0,.35);animation:coachin .35s ease-out,coachbob 2.4s ease-in-out .35s infinite;cursor:pointer}
@@ -318,6 +335,7 @@
     <div class="foot"><span class="hint">Текстийг засаж туршиж болно · үсэг дээр дарж өөрөө засна</span>
       <button class="btn ghost sm" type="button" id="editBtn">✎ Үсэг засах</button></div>
   </section>
+  <section class="recipes" id="recipes" aria-label="Үсэг бүрийг хэрхэн үүсгэсэн"></section>
   <div class="msg" id="msg"></div>
 
 
@@ -2871,7 +2889,7 @@ def font_info(data):
       b.onclick = () => showHow(ch, st);
       box.appendChild(b);
     });
-    $('howBox').hidden = !keys.length;
+    $('howBox').hidden = true; // the full list below the letters replaces these chips
   }
 
   function captions() {
@@ -3027,21 +3045,65 @@ def font_info(data):
     (info && info.fauxFound || '').split(/\s+/).forEach(p => { const [a, b] = p.split('→'); if (a && b && !m[b]) m[b] = a.toUpperCase(); });
     return m;
   }
-  function howFor(up) { // explain any generated letter, by its capital's code point
+  const TFBADGE = { mirror: '↔', flip: '↕', rot: '⟲' };
+  function howData(up) { // {srcs, badge, text} for a generated letter, by its capital's code point
     const ch = String.fromCodePoint(up);
-    if (up === 0x04E8) return showCustom(ch, ['O'], 'O үсгийн дотор хөндлөн зураас нэмсэн.');
+    if (up === 0x04E8) return { srcs: ['O'], text: 'O үсгийн дотор хөндлөн зураас нэмсэн.' };
     if (up === 0x04AE) {
       const k = info && info.ue && info.ue[0];
-      if (k && k[0] === 'copy') return showCustom(ch, [k[1]], '«' + k[1] + '» үсгийг шууд хуулсан.');
-      if (k && (k[0] === 'fork' || k[0] === 'xfork')) return showCustom(ch, [k[1], 'I'], '«' + k[1] + '» үсгийн доор шулуун хөл залгасан.');
-      if (k && k[0] === 'stem') return showCustom(ch, [k[1]], '«' + k[1] + '» үсэгт доош сүүл нэмсэн.');
-      return showCustom(ch, ['Y'], 'Y үсгээс үүсгэсэн.');
+      if (k && k[0] === 'copy') return { srcs: [k[1]], text: '«' + k[1] + '» үсгийг шууд хуулсан.' };
+      if (k && (k[0] === 'fork' || k[0] === 'xfork')) return { srcs: [k[1], 'I'], text: '«' + k[1] + '» үсгийн доор шулуун хөл залгасан.' };
+      if (k && k[0] === 'stem') return { srcs: [k[1]], text: '«' + k[1] + '» үсэгт доош сүүл нэмсэн.' };
+      return { srcs: ['Y'], text: 'Y үсгээс үүсгэсэн.' };
     }
     const fx = fauxMap();
-    if (fx[ch]) return showCustom(ch, [fx[ch]], 'Энэ фонтын «' + fx[ch] + '» үсгийн байранд ' + ch + ' хэлбэр зурагдсан байсныг таньж, шууд ашигласан.');
+    if (fx[ch]) return { srcs: [fx[ch]], text: 'Энэ фонтын «' + fx[ch] + '» үсгийн байранд ' + ch + ' хэлбэр зурагдсан байсныг таньж, шууд ашигласан.' };
     const st = (autoMap() || {})[up];
-    if (st) return showHow(ch, st);
-    showCustom(ch, [], 'Латин үсгүүдээс ижил хэлбэртэйг нь хуулсан.');
+    if (st && st.make) { const r = RECIPES[ch] || [[], 'Фонтын өөрийн хэсгүүдээс угсарсан.']; return { srcs: r[0], text: r[1] }; }
+    if (st) return { srcs: [fixSrc(st.src)].concat(st.src2 ? [fixSrc(st.src2)] : []), badge: TFBADGE[st.t],
+      text: '«' + fixSrc(st.src) + '» үсгийн ' + (TFTXT[st.t] || TFTXT.none) + (st.src2 ? ', хажууд нь «' + st.src2 + '»-г залгасан.' : '.') };
+    return { srcs: [], text: 'Латин үсгүүдээс ижил хэлбэртэйг нь хуулсан.' };
+  }
+  function fixSrc(L) { // a Latin slot drawn as Cyrillic was replaced by its lowercase twin
+    const alt = new Set((info && info.fauxFound || '').split(/\s+/).map(p => p.split('→')[0]).filter(Boolean));
+    return alt.has(L) ? L.toLowerCase() : L;
+  }
+  function howFor(up) {
+    const ch = String.fromCodePoint(up), st = (autoMap() || {})[up];
+    if (st && !st.make && !fauxMap()[ch] && up !== 0x04E8 && up !== 0x04AE) return showHow(ch, st);
+    const d = howData(up); showCustom(ch, d.srcs, d.text);
+  }
+  function renderRecipes() {
+    const box = $('recipes'); box.innerHTML = '';
+    if (mode !== 'all' || !info || !info.suggest) return;
+    const had = new Set(info.suggest.letters.filter(l => l.has).map(l => l.cp)), fx = fauxMap();
+    const ups = [...ALPHA].map(c => c.codePointAt(0)).filter(cp => !had.has(cp) || fx[String.fromCodePoint(cp)]);
+    if (!ups.length) return;
+    const h = document.createElement('h2'); h.textContent = 'Үсэг бүрийг хэрхэн үүсгэсэн бэ';
+    const sub = document.createElement('div'); sub.className = 'sub';
+    sub.textContent = ups.length + ' үсгийг фонтын өөрийн үсгүүдээс үүсгэлээ. Таалагдахгүй байвал «Засах» дарж өөрөө засаарай.';
+    const grid = document.createElement('div'); grid.className = 'rgrid';
+    const ff = currentFace ? '"' + currentFace.family + '", Inter, sans-serif' : '';
+    ups.forEach(up => {
+      const ch = String.fromCodePoint(up), lo = up === 0x04E8 ? 'ө' : up === 0x04AE ? 'ү' : ch.toLowerCase(), d = howData(up);
+      const c = document.createElement('div'); c.className = 'rcard';
+      const eq = document.createElement('div'); eq.className = 'eq';
+      d.srcs.forEach((sc, i) => {
+        if (i) { const op = document.createElement('span'); op.className = 'op'; op.textContent = '+'; eq.appendChild(op); }
+        const g = document.createElement('span'); g.className = 'sg pv'; g.textContent = sc; if (ff) g.style.fontFamily = ff;
+        if (i === 0 && d.badge) { const b = document.createElement('i'); b.textContent = d.badge; g.appendChild(b); }
+        eq.appendChild(g);
+      });
+      if (d.srcs.length) { const ar = document.createElement('span'); ar.className = 'op'; ar.textContent = '→'; eq.appendChild(ar); }
+      const r = document.createElement('span'); r.className = 'rs pv'; r.textContent = ch + lo; if (ff) r.style.fontFamily = ff;
+      eq.appendChild(r);
+      const p = document.createElement('p'); const b = document.createElement('b'); b.textContent = ch + ' — ';
+      p.append(b, document.createTextNode(d.text));
+      const e = document.createElement('button'); e.type = 'button'; e.className = 'redit'; e.textContent = '✎ Засах';
+      e.setAttribute('aria-label', ch + ' үсгийг засах'); e.onclick = () => openEditor(up);
+      c.append(eq, p, e); grid.appendChild(c);
+    });
+    box.append(h, sub, grid);
   }
   function hideHow() { $('howModal').hidden = true; if (lastHowFocus && lastHowFocus.focus) lastHowFocus.focus(); }
   $('howClose').addEventListener('click', hideHow);
@@ -3073,6 +3135,7 @@ def font_info(data):
       box.appendChild(t);
     });
     markEdited();
+    renderRecipes();
   }
   function markEdited() {
     const ae = activeEdits();
