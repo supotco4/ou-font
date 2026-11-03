@@ -221,6 +221,8 @@
   .ed .wline{stroke:var(--accent);stroke-width:2;stroke-dasharray:6 4;vector-effect:non-scaling-stroke}
   .ed .whit{stroke:transparent;stroke-width:16;vector-effect:non-scaling-stroke;cursor:ew-resize}
   .ed .draft{fill:rgba(255,122,69,.12);stroke:#ff7a45;stroke-width:2;vector-effect:non-scaling-stroke}
+  .ed .segsel{fill:none;stroke:#ff7a45;stroke-width:4;stroke-linecap:round;vector-effect:non-scaling-stroke;pointer-events:none}
+  .ed .seghov{fill:none;stroke:var(--accent);stroke-width:4;stroke-linecap:round;vector-effect:non-scaling-stroke;opacity:.55;pointer-events:none}
   .ed .marq{fill:rgba(47,84,235,.08);stroke:var(--accent);stroke-width:1;stroke-dasharray:4 3;vector-effect:non-scaling-stroke}
   .ed .bottom{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .ed .hint{flex:1;color:var(--faint);font-size:12.5px;min-width:200px}
@@ -356,6 +358,7 @@
         <b>Хулгана</b>
         <span>Хоосон газар чирэх</span><i>олон цэг сонгох</i>
         <span>Shift + товших</span><i>сонголтод нэмэх / хасах</i>
+        <span>Шугам дээр товших</span><i>хоёр цэгийн хоорондох шугамыг сонгох</i>
         <span>Дүрс дээр товших</span><i>дүрсийг бүтнээр сонгох</i>
         <span>Shift + чирэх</span><i>зөвхөн хэвтээ / босоо зөөх</i>
         <span>Хүрээн дээр давхар товших</span><i>цэг нэмэх</i>
@@ -2951,7 +2954,7 @@ def font_info(data):
       const src = edits[cp] ? edits[cp] : E.base[cp];
       E.work[cp] = { width: src.width, contours: clone(src.contours), touched: false, undo: [], redo: [] };
     }
-    E.cp = cp; E.sel = new Set(); E.draft = null; E.view = null;
+    E.cp = cp; E.sel = new Set(); E.draft = null; E.view = null; E.hov = null;
     setTool(E.tool === 'add' || E.tool === 'move' ? E.tool : 'move');
     renderLetters(); render();
   }
@@ -2977,15 +2980,15 @@ def font_info(data):
   function snap() { return JSON.stringify({ w: W().width, c: W().contours }); }
   function push() {
     const w = W(); w.undo.push(snap()); if (w.undo.length > 200) w.undo.shift();
-    w.redo = []; w.touched = true;
+    w.redo = []; w.touched = true; E.hov = null;
   }
-  function restore(s) { const o = JSON.parse(s); W().width = o.w; W().contours = o.c; E.sel = new Set(); render(); }
+  function restore(s) { E.hov = null; const o = JSON.parse(s); W().width = o.w; W().contours = o.c; E.sel = new Set(); render(); }
   function undo() { const w = W(); if (!w.undo.length) return; w.redo.push(snap()); restore(w.undo.pop()); }
   function redo() { const w = W(); if (!w.redo.length) return; w.undo.push(snap()); restore(w.redo.pop()); }
 
   // ----- tools -----
   const HINTS = {
-    move: 'Цэг эсвэл дүрс дээр дарж сонгоно · хоосон газар чирж олон цэг сонгоно · Shift — нэмж сонгох · дугуй — томруулах.',
+    move: 'Цэг, шугам эсвэл дүрс дээр дарж сонгоно · хоосон газар чирж олон цэг сонгоно · Shift — нэмж сонгох · дугуй — томруулах.',
     add: 'Үсгийн хүрээн дээр товшиж шинэ цэг нэмнэ.',
     draw: 'Товшиж цэг тавина · эхний цэг дээр дарж эсвэл Enter дарж дүрсээ хаана · Esc — болих.',
     rect: 'Чирж тэгш өнцөгт зурна.',
@@ -3023,6 +3026,18 @@ def font_info(data):
       }
     });
     return d + 'Z';
+  }
+  function segD(c, [a, offs, b]) {
+    const P = i => c[i][0] + ' ' + c[i][1];
+    let d = 'M' + P(a);
+    if (!offs.length) return d + 'L' + P(b);
+    if (c[offs[0]][2] === 'c' && offs.length >= 2) return d + 'C' + P(offs[0]) + ' ' + P(offs[1]) + ' ' + P(b);
+    if (offs.length === 1) return d + 'Q' + P(offs[0]) + ' ' + P(b);
+    for (let j = 0; j < offs.length; j++) {
+      const p = c[offs[j]], q = j + 1 < offs.length ? c[offs[j + 1]] : null;
+      d += 'Q' + p[0] + ' ' + p[1] + ' ' + (q ? ((p[0] + q[0]) / 2) + ' ' + ((p[1] + q[1]) / 2) : P(b));
+    }
+    return d;
   }
   const area = c => { let s = 0; for (let i = 0; i < c.length; i++) { const p = c[i], q = c[(i + 1) % c.length]; s += p[0] * q[1] - q[0] * p[1]; } return s / 2; };
   function inside(pt, c) {
@@ -3138,6 +3153,10 @@ def font_info(data):
       const l = offs[offs.length - 1];
       el('line', { x1: c[b][0], y1: c[b][1], x2: c[l][0], y2: c[l][1], class: 'hl' }, G);
     }));
+    w.contours.forEach((c, ci) => segs(c).forEach(sg => {
+      if (E.sel.has(key(ci, sg[0])) && E.sel.has(key(ci, sg[2])) && !fullC.has(ci)) el('path', { d: segD(c, sg), class: 'segsel' }, G);
+    }));
+    if (E.hov && !E.drag && E.tool === 'move' && w.contours[E.hov.c]) el('path', { d: segD(w.contours[E.hov.c], E.hov.seg), class: 'seghov' }, G);
     w.contours.forEach((c, ci) => c.forEach((p, pi) => {
       const on = p[2] === 'on', s = E.sel.has(key(ci, pi));
       el('circle', { cx: p[0], cy: p[1], r: R0 * 2.2, class: 'hit', 'data-c': ci, 'data-p': pi }, G);
@@ -3252,6 +3271,14 @@ def font_info(data):
       if (!E.sel.has(k)) E.sel = new Set([k]);
       beginMove(pt); render(); return;
     }
+    const sh = ds.p == null ? nearestSeg(pt) : null;
+    if (sh && sh.dist < R0 * 2.6) { // a segment between two points
+      const ks = [sh.seg[0], ...sh.seg[1], sh.seg[2]].map(i => key(sh.c, i));
+      const has = ks.every(k => E.sel.has(k));
+      if (ev.shiftKey) { ks.forEach(k => has ? E.sel.delete(k) : E.sel.add(k)); render(); return; }
+      if (!has) E.sel = new Set(ks);
+      E.hov = null; beginMove(pt); render(); return;
+    }
     if (ds.c != null) {
       const ci = +ds.c, all = W().contours[ci].every((_, pi) => E.sel.has(key(ci, pi)));
       if (ev.shiftKey && all) { W().contours[ci].forEach((_, pi) => E.sel.delete(key(ci, pi))); render(); return; }
@@ -3277,7 +3304,15 @@ def font_info(data):
     }
     const pt = fontPt(ev);
     if (E.tool === 'draw' && E.draft && E.draft.length) { E.hover = pt; render(); return; }
-    const d = E.drag; if (!d) return;
+    const d = E.drag;
+    if (!d) {
+      if (E.tool === 'move' && !(ev.target.dataset && ev.target.dataset.p != null)) {
+        const sh = nearestSeg(pt), h = sh && sh.dist < R0 * 2.6 ? { c: sh.c, seg: sh.seg } : null;
+        const same = (h && E.hov && h.c === E.hov.c && h.seg[0] === E.hov.seg[0]) || (!h && !E.hov);
+        if (!same) { E.hov = h; render(); }
+      } else if (E.hov) { E.hov = null; render(); }
+      return;
+    }
     if (d.kind === 'pan') {
       const upp = viewScale();
       E.view = { ...d.v0, x: d.v0.x - (ev.clientX - d.sx) * upp, y: d.v0.y - (ev.clientY - d.sy) * upp };
