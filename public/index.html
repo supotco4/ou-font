@@ -326,6 +326,17 @@
   </div>
 </div>
 
+<div class="modal" id="askModal" hidden role="dialog" aria-modal="true" aria-labelledby="askTitle">
+  <div class="box" style="max-width:460px">
+    <h3 id="askTitle">Кирилл үсэг алга байна</h3>
+    <p id="askText"></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+      <button class="btn ghost" type="button" id="askNo">Үгүй, зөвхөн Ө Ү</button>
+      <button class="btn primary" type="button" id="askYes">«Бүх үсэг» рүү шилжих</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal ed" id="edModal" hidden role="dialog" aria-modal="true" aria-labelledby="edTitle">
   <div class="box">
     <div class="top">
@@ -2759,7 +2770,26 @@ def font_info(data):
     captions();
     renderAlpha();
     regenerate();
+    askAllLetters();
   }
+  // In "Ө Ү only" mode, offer the all-letters tab when the font lacks Cyrillic
+  let askFocus = null;
+  function askAllLetters() {
+    if (mode !== 'ou' || !info || info.cyr >= 64 || (info.suggest && info.suggest.faux)) return;
+    const miss = (info.cyrMissing || '').length;
+    $('askTitle').textContent = info.cyr === 0 ? 'Энэ фонтод кирилл үсэг алга' : 'Энэ фонтод ' + miss + ' кирилл үсэг дутуу';
+    $('askText').textContent = (info.cyr === 0
+      ? 'Зөвхөн Ө Ү нэмбэл бусад монгол үсэг өөр фонтоор харагдана. '
+      : 'Дутуу үсгүүд (' + info.cyrMissing.slice(0, 20) + (miss > 20 ? '…' : '') + ') өөр фонтоор харагдана. ')
+      + '«Бүх үсэг» таб дутуу бүх үсгийг фонтын өөрийн хэлбэрээс үүсгэнэ (туршилтын боломж).';
+    askFocus = document.activeElement;
+    $('askModal').hidden = false; $('askYes').focus();
+  }
+  function closeAsk() { $('askModal').hidden = true; if (askFocus && askFocus.focus) askFocus.focus(); }
+  $('askYes').onclick = () => { closeAsk(); setMode('all'); };
+  $('askNo').onclick = closeAsk;
+  $('askModal').addEventListener('click', e => { if (e.target === $('askModal')) closeAsk(); });
+  $('askModal').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeAsk(); } });
 
   function notice() {
     const n = $('notice'); const has = Object.values(info.has).every(Boolean);
