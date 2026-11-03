@@ -158,7 +158,7 @@
 
   <section class="hero">
     <h1>Фонтоо <em>монгол</em><br>болгоё.</h1>
-    <p class="lead">Ө ө Ү ү үсгийг фонтын өөрийн хэлбэрээс нь автоматаар үүсгэнэ. Файл тань таны төхөөрөмжөөс гарахгүй.</p>
+    <p class="lead">Ө ө Ү ү, мөн дутуу кирилл үсгүүдийг фонтын өөрийн хэлбэрээс нь автоматаар үүсгэнэ. Файл тань таны төхөөрөмжөөс гарахгүй.</p>
   </section>
 
   <label class="drop" id="drop">
@@ -187,7 +187,8 @@
       <div class="tile new"><div class="g pv">Ү</div><div class="cap" id="c2"></div></div>
       <div class="tile new"><div class="g pv">ү</div><div class="cap" id="c3"></div></div>
     </div>
-    <textarea class="sample pv" id="sample" spellcheck="false" rows="4">Өглөөний нар өндөр уулын оройд гэрэлтэв. Үүр цайх үеэр хүүхдүүд өөдрөг дуулав.</textarea>
+    <textarea class="sample pv" id="sample" spellcheck="false" rows="4">Өглөөний нар өндөр уулын оройд гэрэлтэв. Үүр цайх үеэр хүүхдүүд өөдрөг дуулав.
+АБВГДЕЁЖЗИЙКЛМНОӨПРСТУҮФХЦЧШЩЪЫЬЭЮЯ</textarea>
     <div class="foot"><span class="hint">Текстийг засаж туршиж болно</span></div>
   </section>
   <div class="msg" id="msg"></div>
@@ -1043,7 +1044,7 @@ MAP_IDEAS = {
     0x041C: ("M", "none"), 0x041D: ("H", "none"), 0x041E: ("O", "none"), 0x0420: ("P", "none"),
     0x0421: ("C", "none"), 0x0422: ("T", "none"), 0x0425: ("X", "none"), 0x0423: ("Y", "none"),
     0x042F: ("R", "mirror"), 0x0418: ("N", "mirror"), 0x0419: ("N", "mirror"), 0x0413: ("L", "flip"),
-    0x041F: ("U", "flip"), 0x042C: ("P", "flip"), 0x0417: ("3", "none"), 0x041B: ("V", "flip"),
+0x042C: ("P", "flip"), 0x0417: ("3", "none"), 0x041B: ("V", "flip"),
     0x042D: ("C", "mirror"), 0x0401: ("\u00cb", "none"), 0x042B: ("P", "flip", "I"),
 }
 LOWER_LOOK = {0x0430: "a", 0x0435: "e", 0x043E: "o", 0x0440: "p", 0x0441: "c", 0x0443: "y", 0x0445: "x"}
@@ -1081,15 +1082,26 @@ def map_suggest(font):
     return {"letters": out, "faux": faux}
 
 
+def _compose(m2, m1):
+    """Affine m2 after m1 (fontTools order a, b, c, d, e, f)."""
+    a1, b1, c1, d1, e1, f1 = m1
+    a2, b2, c2, d2, e2, f2 = m2
+    return (a2 * a1 + c2 * b1, b2 * a1 + d2 * b1, a2 * c1 + c2 * d1, b2 * c1 + d2 * d1,
+            a2 * e1 + c2 * f1 + e2, b2 * e1 + d2 * f1 + f2)
+
+
 def _map_glyph(font, src, t, src2, pen):
     gs = font.getGlyphSet()
     w = gs[src].width
+    sl = _slant(font)
     polys = _polys(gs, src)
     y0, y1 = (_bbox(polys)[1], _bbox(polys)[3]) if polys else (0, 0)
     mats = {"none": (1, 0, 0, 1, 0, 0), "mirror": (-1, 0, 0, 1, w, 0),
             "flip": (1, 0, 0, -1, 0, y0 + y1), "rot": (-1, 0, 0, -1, w, y0 + y1)}
     m = mats.get(t, mats["none"])
-    target = ReverseContourPen(pen) if m[0] * m[3] < 0 else pen
+    if sl and t != "none":  # transform upright, then re-slant
+        m = _compose((1, 0, sl, 1, 0, 0), _compose(m, (1, 0, -sl, 1, 0, 0)))
+    target = ReverseContourPen(pen) if m[0] * m[3] - m[1] * m[2] < 0 else pen
     gs[src].draw(TransformPen(target, m))
     if src2 and src2 in gs:
         gs[src2].draw(TransformPen(pen, (1, 0, 0, 1, w, 0)))
@@ -1157,7 +1169,11 @@ def _load(font, ch):
     name = cmap[ord(ch)]
     cc = CubicContours(gs)
     gs[name].draw(cc)
-    return [c["segs"] for c in cc.contours if c["segs"]], gs[name].width
+    pieces = [c["segs"] for c in cc.contours if c["segs"]]
+    sl = _slant(font)
+    if sl:  # work upright
+        pieces = [[(sg[0],) + tuple((p[0] - sl * p[1], p[1]) for p in sg[1:]) for sg in pc] for pc in pieces]
+    return pieces, gs[name].width
 
 
 def _runs(h):
@@ -1344,8 +1360,9 @@ def make_de(font, M):           # Д  ← top of A stretched + base bar + feet
     base = [_rectp(bl, 0, br, bt, M["sign"])]
     fs = M["s"] * 0.9
     feet = [_rectp(bl, -M["desc"], bl + fs, 0, M["sign"]), _rectp(br - fs, -M["desc"], br, 0, M["sign"])]
-    shift = max(0, x0 - bl)
-    return _tx(tri + base + feet, (1, 0, 0, 1, shift, 0)), int(w + 2 * ext)
+    lsb, rsb = x0, w - x1
+    pieces = _tx(tri + base + feet, (1, 0, 0, 1, lsb - bl, 0))
+    return pieces, int(lsb + (br - bl) + rsb)
 
 
 def _soft(font):                # Ь ← P flipped vertically
@@ -1479,10 +1496,36 @@ def make_short_i(font, M):      # Й  ← И + breve (or a short bar)
     return I + bar, w
 
 
+
+def make_pe(font, M):           # П  ← legs of H + a top bar
+    H, w = _load(font, "H")
+    if not H:
+        return None
+    x0, y0, x1, y1 = _bboxP(H)
+    rr = _runs(_hitsP(H, "x", (x0 + x1) / 2))
+    if not rr:
+        return None
+    bar = min(rr, key=lambda r: abs((r[0] + r[1]) / 2 - M["cap"] / 2))
+    legs = _runs(_hitsP(H, "y", (bar[0] + bar[1]) / 2))
+    if len(legs) < 1:
+        return None
+    hl = _runs(_hitsP(H, "y", y0 + (y1 - y0) * 0.2))
+    if len(hl) < 2:
+        return None
+    lR, rL = hl[0][1], hl[-1][0]
+    bt = M["bt"]
+    top = y1 - bt
+    low = _cut(H, "y", bar[0], False)
+    mid = _cut(_cut(H, "y", bar[1], True), "y", top, False)
+    band = _cut(_cut(H, "y", bar[0], True), "y", bar[1], False)
+    band = _cut(band, "x", lR, False) + _cut(band, "x", rL, True)
+    tb = [_rectp(hl[0][0], top, hl[-1][1], y1, M["sign"])]
+    return low + mid + band + tb, w
+
 CONSTRUCT = {
     0x0427: make_che, 0x0428: make_sha, 0x0429: make_shcha, 0x0426: make_tse, 0x0416: make_zhe,
     0x0424: make_ef, 0x042E: make_yu, 0x0414: make_de, 0x0411: make_be, 0x042A: make_hard,
-    0x042D: make_e_rev, 0x0401: make_yo, 0x0419: make_short_i,
+    0x042D: make_e_rev, 0x0401: make_yo, 0x0419: make_short_i, 0x041F: make_pe,
 }
 
 
@@ -1499,9 +1542,21 @@ def construct(font, cp, pen):
     if not r:
         return None
     pieces, w = r
+    sl = _slant(font)
+    out = TransformPen(pen, (1, 0, sl, 1, 0, 0)) if sl else pen
+    # monospaced fonts keep every advance equal: squeeze to the common width
+    try:
+        if font["post"].isFixedPitch:
+            mw = font.getGlyphSet()[font.getBestCmap()[ord("H")]].width
+            if w and abs(w - mw) > 1:
+                kx = mw / w
+                out = TransformPen(out, (kx, 0, 0, 1, 0, 0))
+                w = mw
+    except Exception:
+        pass
     for pc in pieces:
         if pc and len(pc) >= 2:
-            _emit(pen, pc)
+            _emit(out, pc)
     return int(w)
 
 
@@ -1941,7 +1996,8 @@ def font_info(data):
     const n = $('notice'); const has = Object.values(info.has).every(Boolean);
     let t = '';
     if (has && !overwrite) t = 'Энэ фонтод Ө, Ү аль хэдийн байна. ';
-    else if (info.cyr === 0) t = 'Энэ фонтод кирилл үсэг байхгүй тул зөвхөн Ө ө Ү ү нэмэгдэнэ. Бусад кирилл үсэг өөр фонтоор харагдана.';
+    else if (info.cyr < 64 && info.suggest && !info.suggest.faux) t = (info.cyr === 0 ? 'Энэ фонтод кирилл үсэг байхгүй байсан тул' : 'Дутуу кирилл үсгүүдийг') + ' фонтын өөрийн үсгүүдээс автоматаар үүсгэлээ (шинэ, туршилтын боломж). Үр дүнг доорх жишээ текстээр шалгаарай.';
+    else if (info.cyr === 0) t = 'Энэ фонтын латин үсгүүдэд кирилл маягийн хэлбэр зурагдсан тул бусад кирилл үсгийг автоматаар үүсгэх боломжгүй. Зөвхөн Ө ө Ү ү нэмэгдэнэ.';
     else if (info.cyr < 64) t = 'Дутуу кирилл үсэг: ' + info.cyrMissing + '. Эдгээр нь өөр фонтоор харагдана.';
     n.innerHTML = '';
     n.appendChild(document.createTextNode(t));
@@ -1971,7 +2027,7 @@ def font_info(data):
 
   function build(family) {
     py.globals.set('src_js', srcBytes);
-    py.globals.set('opts_js', JSON.stringify({ overwrite, family: family || '' }));
+    py.globals.set('opts_js', JSON.stringify({ overwrite, family: family || '', map: autoMap() }));
     const res = py.runPython(
       'out, ext, rep = mnfont.build(bytes(src_js.to_py()), json.loads(opts_js))\n' +
       '(out if out is not None else b"", ext or "")');
@@ -1998,6 +2054,14 @@ def font_info(data):
   }
 
 
+
+  // ----- automatic Cyrillic for fonts that lack it -----
+  function autoMap() {
+    if (!info || !info.suggest || info.suggest.faux) return null;
+    const m = {};
+    info.suggest.letters.forEach(l => { if (!l.has && l.sug) m[l.cp] = l.sug; });
+    return Object.keys(m).length ? m : null;
+  }
 
   // ----- download counter (private: counted, never shown) -----
   function countDownload(ext) {
