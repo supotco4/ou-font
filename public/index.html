@@ -21,6 +21,7 @@
       --shadow:0 1px 2px rgba(0,0,0,.3), 0 16px 48px -16px rgba(0,0,0,.6); }
   }
   *{box-sizing:border-box;margin:0}
+  [hidden]{display:none!important}
   html,body{background:var(--bg)}
   body{color:var(--ink);font:15px/1.55 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
   body::before{content:"";position:fixed;inset:-20vh -10vw auto;height:70vh;pointer-events:none;z-index:0;
@@ -151,6 +152,47 @@
   .modal .op{font-size:26px;color:var(--faint)}
   .modal p{color:var(--soft);font-size:15px;line-height:1.5;margin-bottom:18px}
   .modal .close{float:right}
+  .modes{display:none;gap:4px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:99px;box-shadow:var(--shadow);width:max-content;margin:0 auto 16px}
+  body.loaded .modes{display:flex}
+  .modes button{font:600 14px/1 Inter,sans-serif;border:0;background:transparent;color:var(--soft);padding:11px 20px;border-radius:99px;cursor:pointer;transition:.15s}
+  .modes button[aria-selected=true]{background:var(--ink);color:var(--bg)}
+  .modes button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .tile{cursor:pointer}
+  .tile:hover{outline:1.5px solid var(--line2)}
+  .tile.edited::after{content:"✎";position:absolute;top:10px;left:14px;font-size:13px;color:var(--accent)}
+  .btn.sm{padding:9px 14px;font-size:13px}
+  .modal .eq + p + .row{display:flex;gap:8px;justify-content:flex-end}
+
+  .ed .box{max-width:980px;padding:20px 22px;display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 24px)}
+  .ed h3{margin:0}
+  .ed .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .ed .letters{display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+  .ed .letters button{font:600 16px/1 Inter,sans-serif;min-width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--tile);color:var(--ink);cursor:pointer;position:relative;flex:none}
+  .ed .letters button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .ed .letters button:disabled{opacity:.3;cursor:default}
+  .ed .letters button.mod::after{content:"";position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--accent)}
+  .ed .tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .ed .tools button{font:500 13px/1 Inter,sans-serif;padding:9px 12px;border-radius:10px;border:1px solid var(--line2);background:var(--surface);color:var(--ink);cursor:pointer}
+  .ed .tools button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .ed .tools button:disabled{opacity:.35;cursor:default}
+  .ed .tools .gap{flex:1}
+  .ed .canvas{background:var(--tile);border-radius:18px;flex:1 1 auto;min-height:260px;height:58vh;position:relative;overflow:hidden}
+  .ed svg{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none}
+  .ed .guide{stroke:var(--line2);stroke-width:1;vector-effect:non-scaling-stroke}
+  .ed .guide.base{stroke:var(--faint)}
+  .ed .glabel{fill:var(--faint);font:11px Inter,sans-serif}
+  .ed .ghost{fill:none;stroke:var(--faint);stroke-dasharray:4 4;stroke-width:1;vector-effect:non-scaling-stroke}
+  .ed .shape{fill:var(--ink);fill-opacity:.88;stroke:var(--ink);stroke-width:1;vector-effect:non-scaling-stroke;cursor:move}
+  .ed .shape.sel{fill:var(--accent);fill-opacity:.55}
+  .ed .hl{stroke:var(--accent);stroke-width:1;vector-effect:non-scaling-stroke}
+  .ed .pt{fill:var(--surface);stroke:var(--accent);stroke-width:1.5;vector-effect:non-scaling-stroke;cursor:grab}
+  .ed .pt.off{fill:var(--accent)}
+  .ed .pt.sel{fill:#ff7a45;stroke:#ff7a45}
+  .ed .wline{stroke:var(--accent);stroke-width:2;stroke-dasharray:6 4;vector-effect:non-scaling-stroke;cursor:ew-resize}
+  .ed .whit{stroke:transparent;stroke-width:14;vector-effect:non-scaling-stroke;cursor:ew-resize}
+  .ed .draft{fill:none;stroke:#ff7a45;stroke-width:2;vector-effect:non-scaling-stroke}
+  .ed .bottom{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .ed .hint{flex:1;color:var(--faint);font-size:12.5px;min-width:200px}
   footer{margin-top:48px;text-align:center;color:var(--faint);font-size:12.5px}
   footer .sep{margin:0 6px}
   footer .by{color:var(--soft);font-weight:500}
@@ -160,6 +202,8 @@
     .tile .g{font-size:24vw}
     .bar{flex-wrap:wrap}
     .bar .file{flex-basis:100%}
+    .ed .box{padding:14px}
+    .ed .canvas{height:50vh}
   }
 </style>
 </head>
@@ -195,6 +239,11 @@
     </button>
   </div>
 
+  <div class="modes" role="tablist" aria-label="Нэмэх үсэг">
+    <button type="button" role="tab" id="mOU" aria-selected="false">Зөвхөн Ө Ү</button>
+    <button type="button" role="tab" id="mAll" aria-selected="true">Бүх үсэг</button>
+  </div>
+
   <div class="notice" id="notice"></div>
   <div class="notice show" id="howBox" hidden style="color:var(--soft);background:var(--surface);border:1px solid var(--line)">
     Програмаар үүсгэсэн үсгүүд. Дарж хэрхэн үүсгэснийг харна уу:
@@ -210,7 +259,8 @@
     </div>
     <textarea class="sample pv" id="sample" spellcheck="false" rows="4">Өглөөний нар өндөр уулын оройд гэрэлтэв. Үүр цайх үеэр хүүхдүүд өөдрөг дуулав.
 АБВГДЕЁЖЗИЙКЛМНОӨПРСТУҮФХЦЧШЩЪЫЬЭЮЯ</textarea>
-    <div class="foot"><span class="hint">Текстийг засаж туршиж болно</span></div>
+    <div class="foot"><span class="hint">Текстийг засаж туршиж болно · үсэг дээр дарж өөрөө засна</span>
+      <button class="btn ghost sm" type="button" id="editBtn">✎ Үсэг засах</button></div>
   </section>
   <div class="msg" id="msg"></div>
 
@@ -223,8 +273,36 @@
     <h3 id="howTitle"></h3>
     <div class="eq" id="howEq"></div>
     <p id="howText"></p>
-    <button class="btn ghost close" type="button" id="howClose">Хаах</button>
-    <div style="clear:both"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn ghost" type="button" id="howEdit">✎ Өөрөө засах</button>
+      <button class="btn ghost" type="button" id="howClose">Хаах</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal ed" id="edModal" hidden role="dialog" aria-modal="true" aria-labelledby="edTitle">
+  <div class="box">
+    <div class="top">
+      <h3 id="edTitle">Үсэг засах</h3>
+      <span class="hint" id="edWidth" style="color:var(--faint);font-size:12.5px"></span>
+    </div>
+    <div class="letters" id="edLetters" role="toolbar" aria-label="Засах үсэг"></div>
+    <div class="tools">
+      <button type="button" id="tMove" aria-pressed="true">↖ Зөөх</button>
+      <button type="button" id="tAdd" aria-pressed="false">＋ Цэг нэмэх</button>
+      <button type="button" id="tDraw" aria-pressed="false">✚ Шинэ дүрс</button>
+      <button type="button" id="tCurve" disabled>⌒ Муруй болгох</button>
+      <button type="button" id="tDel" disabled>🗑 Устгах</button>
+      <span class="gap"></span>
+      <button type="button" id="tUndo" disabled>↶ Буцаах</button>
+      <button type="button" id="tReset">Анхны хэлбэр</button>
+    </div>
+    <div class="canvas"><svg id="edSvg" aria-label="Үсгийн хэлбэр"></svg></div>
+    <div class="bottom">
+      <span class="hint" id="edHint"></span>
+      <button class="btn ghost" type="button" id="edCancel">Болих</button>
+      <button class="btn primary" type="button" id="edSave">Хадгалах</button>
+    </div>
   </div>
 </div>
 
@@ -1805,7 +1883,7 @@ def build(data, opts):
     if src_o:
         plan.append((0x04E9, "bar", src_o, opts.get("barL", 85), opts.get("offL", 0)))
     up, lo, st = plan_ue(font, opts)
-    mapped = cyr_lookalikes(font, st)
+    mapped = [] if opts.get("onlyOU") else cyr_lookalikes(font, st)
     if up:
         plan.append((0x04AE, up[0], up[1], opts.get("fork", 100)))
     if lo:
@@ -1853,7 +1931,7 @@ def build(data, opts):
                "bar": "үсэгт зураас нэмж"}.get(kind, "үсгийг хуулж")
         report.append(f"{chr(cp)}: «{chr(_rev(cmap, src))}» {how} үүсгэлээ")
 
-    umap = opts.get("map") or {}
+    umap = {} if opts.get("onlyOU") else (opts.get("map") or {})
     no_kern = set()
     if umap:
         cmap_now = font.getBestCmap()
@@ -2059,6 +2137,205 @@ def _rev(cmap, gname):
     return ord("?")
 
 
+# ---------- hand editing ----------
+def _metrics(font):
+    cmap = font.getBestCmap()
+    gs = font.getGlyphSet()
+
+    def top(ch):
+        g = cmap.get(ord(ch))
+        if not g:
+            return None
+        b = BoundsPen(gs)
+        gs[g].draw(b)
+        return round(b.bounds[3]) if b.bounds else None
+
+    upm = font["head"].unitsPerEm
+    hh = font["hhea"]
+    return {"upm": upm, "asc": hh.ascent, "desc": hh.descent,
+            "cap": top("H") or top("I") or round(upm * 0.7),
+            "xh": top("x") or top("o") or None}
+
+
+def glyph_outline(data, cp):
+    """Contours of the glyph for codepoint cp as point lists [x, y, kind]
+    (kind: 'on', 'q' quadratic or 'c' cubic off-curve), plus metrics."""
+    from fontTools.pens.recordingPen import DecomposingRecordingPen
+    font = TTFont(io.BytesIO(data))
+    cmap = font.getBestCmap()
+    gname = cmap.get(cp)
+    if not gname:
+        return None
+    gs = font.getGlyphSet()
+    pen = DecomposingRecordingPen(gs)
+    gs[gname].draw(pen)
+    contours, cur = [], None
+    for op, args in pen.value:
+        if op == "moveTo":
+            cur = [[round(args[0][0]), round(args[0][1]), "on"]]
+        elif op == "lineTo":
+            cur.append([round(args[0][0]), round(args[0][1]), "on"])
+        elif op == "curveTo":
+            for p in args[:-1]:
+                cur.append([round(p[0]), round(p[1]), "c"])
+            cur.append([round(args[-1][0]), round(args[-1][1]), "on"])
+        elif op == "qCurveTo":
+            pts = list(args)
+            closed_off = pts[-1] is None
+            if closed_off:  # contour made only of off-curve points
+                pts = pts[:-1]
+                cur = []
+                pts = pts + [pts[0]]
+                for i in range(len(pts) - 1):
+                    a, b = pts[i], pts[i + 1]
+                    cur.append([round(a[0]), round(a[1]), "q"])
+                    cur.append([round((a[0] + b[0]) / 2), round((a[1] + b[1]) / 2), "on"])
+                continue
+            offs, end = pts[:-1], pts[-1]
+            for i, p in enumerate(offs):  # one off-curve per segment: make implied points explicit
+                cur.append([round(p[0]), round(p[1]), "q"])
+                if i < len(offs) - 1:
+                    n = offs[i + 1]
+                    cur.append([round((p[0] + n[0]) / 2), round((p[1] + n[1]) / 2), "on"])
+            cur.append([round(end[0]), round(end[1]), "on"])
+        elif op in ("closePath", "endPath"):
+            if cur:
+                if len(cur) > 1 and cur[-1][2] == "on" and cur[-1][:2] == cur[0][:2]:
+                    cur.pop()
+                contours.append(cur)
+            cur = None
+    if cur:
+        contours.append(cur)
+    out = _metrics(font)
+    out.update({"cp": cp, "width": gs[gname].width, "contours": contours})
+    return out
+
+
+def present_cps(data, cps):
+    cmap = TTFont(io.BytesIO(data)).getBestCmap()
+    return [c for c in cps if c in cmap]
+
+
+def _draw_points(pen, contour):
+    pts = contour
+    n = len(pts)
+    start = next((i for i, p in enumerate(pts) if p[2] == "on"), None)
+    if start is None or n < 2:
+        return
+    seq = pts[start:] + pts[:start] + [pts[start]]
+    pen.moveTo(tuple(seq[0][:2]))
+    offs = []
+    for p in seq[1:]:
+        if p[2] != "on":
+            offs.append(p)
+            continue
+        xy = tuple(p[:2])
+        if not offs:
+            pen.lineTo(xy)
+        elif offs[0][2] == "c" and len(offs) == 2:
+            pen.curveTo(tuple(offs[0][:2]), tuple(offs[1][:2]), xy)
+        elif offs[0][2] == "c":
+            pen.qCurveTo(*[tuple(o[:2]) for o in offs], xy) if len(offs) == 1 else \
+                pen.curveTo(*[tuple(o[:2]) for o in offs[:2]], xy)
+        else:
+            pen.qCurveTo(*[tuple(o[:2]) for o in offs], xy)
+        offs = []
+    pen.closePath()
+
+
+def apply_edits(data, edits):
+    """edits: {cp: {"width": w, "contours": [...]}} drawn by hand. Each becomes
+    a new glyph so that shared Latin glyphs stay as they were."""
+    font = TTFont(io.BytesIO(data))
+    font.flavor = None
+    is_cff = "CFF " in font
+    gs = font.getGlyphSet()
+    order = list(font.getGlyphOrder())
+    hmtx = font["hmtx"]
+    done = {}
+    for key, e in edits.items():
+        cp = int(key)
+        gname = "uni%04X.ed" % cp
+        width = int(round(e.get("width", 500)))
+        contours = [c for c in e.get("contours", []) if len(c) >= 2]
+        if is_cff:
+            pen = T2CharStringPen(width, gs)
+            dpen = pen
+        else:
+            pen = TTGlyphPen(gs)
+            dpen = Cu2QuPen(pen, max_err=1.0, reverse_direction=False)
+        for c in contours:
+            _draw_points(dpen, c)
+        if gname not in order:
+            order.append(gname)
+        done[gname] = (cp, width, pen)
+    if not done:
+        return data
+    font.setGlyphOrder(order)
+    if is_cff:
+        cff = font["CFF "].cff
+        td = cff.topDictIndex[0]
+        cs = td.CharStrings
+        priv = td.Private if hasattr(td, "Private") else None
+        dflt = getattr(priv, "defaultWidthX", 0) if priv is not None else 0
+        nom = getattr(priv, "nominalWidthX", 0) if priv is not None else 0
+        for gname, (cp, width, pen) in done.items():
+            pen._width = None if width == dflt else width - nom
+            c = pen.getCharString(private=priv, globalSubrs=cff.GlobalSubrs)
+            if gname in cs.charStrings:
+                if cs.charStringsAreIndexed:
+                    cs.charStringsIndex.items[cs.charStrings[gname]] = c
+                else:
+                    cs.charStrings[gname] = c
+            elif cs.charStringsAreIndexed:
+                cs.charStringsIndex.append(c)
+                cs.charStrings[gname] = len(cs.charStringsIndex) - 1
+                td.charset.append(gname)
+            else:
+                cs.charStrings[gname] = c
+                td.charset.append(gname)
+        for gname, (cp, width, pen) in done.items():
+            hmtx[gname] = (width, 0)
+        gs2 = font.getGlyphSet()
+        for gname, (cp, width, pen) in done.items():
+            polys = _polys(gs2, gname)
+            hmtx[gname] = (width, round(_bbox(polys)[0]) if polys else 0)
+    else:
+        glyf = font["glyf"]
+        for gname, (cp, width, pen) in done.items():
+            g = pen.glyph()
+            g.recalcBounds(glyf)
+            glyf[gname] = g
+            hmtx[gname] = (width, getattr(g, "xMin", 0) if g.numberOfContours else 0)
+    if "vmtx" in font:
+        some = next(iter(font["vmtx"].metrics.values()), (0, 0))
+        for gname in done:
+            font["vmtx"][gname] = some
+    if "gvar" in font:
+        for gname in done:
+            font["gvar"].variations[gname] = []
+    for t in font["cmap"].tables:
+        if t.isUnicode() and t.format in (4, 12, 13):
+            for gname, (cp, *_r) in done.items():
+                t.cmap[cp] = gname
+    for tag in ("hdmx", "LTSH", "VDMX", "DSIG", "HVAR", "VVAR"):
+        if tag in font:
+            del font[tag]
+    out = io.BytesIO()
+    font.save(out)
+    return out.getvalue()
+
+
+def build_all(data, opts, edits):
+    """build() and then the hand edits. Returns (final bytes, base bytes, ext)."""
+    out, ext, rep = build(data, opts)
+    base = out if out is not None else data
+    if edits:
+        out = apply_edits(base, edits)
+        ext = "otf" if out[:4] == b"OTTO" else "ttf"
+    return (out or b""), base, (ext or "")
+
+
 def zip_one(name, data):
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
@@ -2092,6 +2369,8 @@ def font_info(data):
 (() => {
   const $ = id => document.getElementById(id);
   let py = null, srcBytes = null, srcName = '', info = null, faceN = 0, currentFace = null, overwrite = false;
+  let mode = 'all', edits = {}, baseBytes = null;
+  try { if (localStorage.getItem('ou-mode') === 'ou') mode = 'ou'; } catch (e) {}
 
   function engine(state, text) {
     $('engine').className = 'engine ' + state;
@@ -2124,7 +2403,7 @@ def font_info(data):
   $('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) loadFile(f); e.target.value = ''; });
 
   async function loadFile(file) {
-    srcName = file.name; overwrite = false;
+    srcName = file.name; overwrite = false; edits = {}; baseBytes = null;
     srcBytes = new Uint8Array(await file.arrayBuffer());
     msg('Уншиж байна…');
     try { await pyReady; } catch (e) { msg('Боловсруулагч ачаалагдаагүй байна. Хуудсаа дахин ачаална уу.'); return; }
@@ -2145,6 +2424,7 @@ def font_info(data):
     const n = $('notice'); const has = Object.values(info.has).every(Boolean);
     let t = '';
     if (has && !overwrite) t = 'Энэ фонтод Ө, Ү аль хэдийн байна. ';
+    else if (mode === 'ou') t = '';
     else if (info.cyr < 64 && info.suggest && !info.suggest.faux) t = (info.cyr === 0 ? 'Энэ фонтод кирилл үсэг байхгүй байсан тул' : 'Дутуу кирилл үсгүүдийг') + ' фонтын өөрийн үсгүүдээс автоматаар үүсгэлээ (шинэ, туршилтын боломж). Үр дүнг доорх жишээ текстээр шалгаарай.';
     else if (info.cyr === 0) t = 'Энэ фонтын латин үсгүүдэд кирилл маягийн хэлбэр зурагдсан тул бусад кирилл үсгийг автоматаар үүсгэх боломжгүй. Зөвхөн Ө ө Ү ү нэмэгдэнэ.';
     else if (info.cyr < 64) t = 'Дутуу кирилл үсэг: ' + info.cyrMissing + '. Эдгээр нь өөр фонтоор харагдана.';
@@ -2161,7 +2441,7 @@ def font_info(data):
   }
   function renderHowChips() {
     const box = $('howChips'); box.innerHTML = '';
-    const m = autoMap() || {};
+    const m = (mode === 'all' && autoMap()) || {};
     const keys = Object.keys(m).filter(k => m[k].make || m[k].t !== 'none' || m[k].src2);
     keys.forEach(k => {
       const ch = String.fromCharCode(+k), st = m[k];
@@ -2188,16 +2468,36 @@ def font_info(data):
     $('c3').innerHTML = lab(ue[1], null, true);
   }
 
+  function activeEdits() {
+    const e = {};
+    Object.keys(edits).forEach(k => { if (mode === 'all' || OU.includes(+k)) e[k] = edits[k]; });
+    return e;
+  }
   function build(family) {
     py.globals.set('src_js', srcBytes);
-    py.globals.set('opts_js', JSON.stringify({ overwrite, family: family || '', map: autoMap() }));
+    py.globals.set('opts_js', JSON.stringify({ overwrite, family: family || '', onlyOU: mode === 'ou',
+      map: mode === 'all' ? autoMap() : null }));
+    py.globals.set('edits_js', JSON.stringify(activeEdits()));
     const res = py.runPython(
-      'out, ext, rep = mnfont.build(bytes(src_js.to_py()), json.loads(opts_js))\n' +
-      '(out if out is not None else b"", ext or "")');
+      'out, base, ext = mnfont.build_all(bytes(src_js.to_py()), json.loads(opts_js), json.loads(edits_js))\n' +
+      '(out, base, ext)');
     const o = res.get(0); const bytes = bytesFromPy(o); o.destroy();
-    const ext = res.get(1); res.destroy();
+    const b = res.get(1); baseBytes = bytesFromPy(b); b.destroy();
+    const ext = res.get(2); res.destroy();
     return { bytes, ext };
   }
+
+  // ----- mode tabs -----
+  const OU = [0x04E8, 0x04E9, 0x04AE, 0x04AF];
+  function setMode(m, quiet) {
+    mode = m;
+    try { localStorage.setItem('ou-mode', m); } catch (e) {}
+    $('mOU').setAttribute('aria-selected', m === 'ou'); $('mAll').setAttribute('aria-selected', m === 'all');
+    if (!quiet && info) { notice(); regenerate(); }
+  }
+  $('mOU').onclick = () => setMode('ou');
+  $('mAll').onclick = () => setMode('all');
+  setMode(mode, true);
 
   async function regenerate() {
     if (!py || !srcBytes) return;
@@ -2213,6 +2513,7 @@ def font_info(data):
       if (currentFace) document.fonts.delete(currentFace);
       currentFace = face;
       document.querySelectorAll('.pv').forEach(el => { el.style.fontFamily = '"' + face.family + '", Inter, sans-serif'; });
+      document.querySelectorAll('.tile').forEach(t => t.classList.toggle('edited', !!activeEdits()[t.querySelector('.g').textContent.codePointAt(0)]));
     } catch (e) { msg('Алдаа гарлаа: ' + shortErr(e)); }
   }
 
@@ -2273,15 +2574,390 @@ def font_info(data):
     const ar = document.createElement('span'); ar.className = 'op'; ar.textContent = '→';
     eq.append(ar, glyphTile(ch, 'үр дүн', true));
     $('howTitle').textContent = ch + ' үсгийг хэрхэн үүсгэсэн бэ';
+    howCh = ch;
     $('howText').textContent = text + ' Жижиг «' + ch.toLowerCase() + '» нь үүнтэй ижил хэлбэртэй.';
     lastHowFocus = document.activeElement;
     const m = $('howModal'); m.hidden = false; $('howClose').focus();
   }
-  let lastHowFocus = null;
+  let lastHowFocus = null, howCh = null;
+  $('howEdit').addEventListener('click', () => { $('howModal').hidden = true; openEditor(howCh.codePointAt(0)); });
   function hideHow() { $('howModal').hidden = true; if (lastHowFocus && lastHowFocus.focus) lastHowFocus.focus(); }
   $('howClose').addEventListener('click', hideHow);
   $('howModal').addEventListener('click', e => { if (e.target === $('howModal')) hideHow(); });
   $('howModal').addEventListener('keydown', e => { if (e.key === 'Escape') hideHow(); });
+
+  // ----- glyph editor -----
+  const ALPHA = 'АБВГДЕЁЖЗИЙКЛМНОӨПРСТУҮФХЦЧШЩЪЫЬЭЮЯ';
+  const ALL_CPS = [...ALPHA].map(c => c.codePointAt(0)).concat([...ALPHA.toLowerCase()].map(c => c.codePointAt(0)));
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  let E = null; // editor session
+  const clone = o => JSON.parse(JSON.stringify(o));
+
+  function pyOutline(cp) {
+    py.globals.set('bb_js', baseBytes); py.globals.set('cp_js', cp);
+    return JSON.parse(py.runPython('json.dumps(mnfont.glyph_outline(bytes(bb_js.to_py()), cp_js))'));
+  }
+  function openEditor(cp) {
+    if (!py || !baseBytes) return;
+    const cps = mode === 'ou' ? OU : ALL_CPS;
+    py.globals.set('bb_js', baseBytes); py.globals.set('cps_js', JSON.stringify(cps));
+    const present = new Set(JSON.parse(py.runPython('json.dumps(mnfont.present_cps(bytes(bb_js.to_py()), json.loads(cps_js)))')));
+    E = { cps, present, work: {}, base: {}, cp: null, tool: 'move', sel: null, draft: null, undo: [], drag: null };
+    if (!present.has(cp)) cp = cps.find(c => present.has(c));
+    if (cp == null) return;
+    lastEdFocus = document.activeElement;
+    $('edModal').hidden = false;
+    selectLetter(cp);
+  }
+  let lastEdFocus = null;
+  function selectLetter(cp) {
+    if (!E.base[cp]) E.base[cp] = pyOutline(cp);
+    if (!E.work[cp]) {
+      const src = edits[cp] ? edits[cp] : E.base[cp];
+      E.work[cp] = { width: src.width, contours: clone(src.contours), touched: false };
+    }
+    E.cp = cp; E.sel = null; E.draft = null; E.undo = [];
+    setTool('move');
+    renderLetters(); render();
+  }
+  function renderLetters() {
+    const box = $('edLetters'); box.innerHTML = '';
+    E.cps.forEach(cp => {
+      const b = document.createElement('button'); b.type = 'button';
+      b.textContent = String.fromCodePoint(cp);
+      b.disabled = !E.present.has(cp);
+      b.setAttribute('aria-pressed', cp === E.cp);
+      if ((E.work[cp] && E.work[cp].touched) || edits[cp]) b.classList.add('mod');
+      b.onclick = () => selectLetter(cp);
+      box.appendChild(b);
+    });
+    const cur = box.querySelector('[aria-pressed=true]');
+    if (cur) cur.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    $('edTitle').textContent = '«' + String.fromCodePoint(E.cp) + '» үсгийг засах';
+  }
+  function W() { return E.work[E.cp]; }
+  function M() { return E.base[E.cp]; }
+  function push() { E.undo.push(JSON.stringify({ w: W().width, c: W().contours })); if (E.undo.length > 100) E.undo.shift(); W().touched = true; }
+  function undo() {
+    const s = E.undo.pop(); if (!s) return;
+    const o = JSON.parse(s); W().width = o.w; W().contours = o.c; E.sel = null; render();
+  }
+  function setTool(t) {
+    E.tool = t; E.draft = t === 'draw' ? [] : null;
+    $('tMove').setAttribute('aria-pressed', t === 'move'); $('tDraw').setAttribute('aria-pressed', t === 'draw');
+    $('tAdd').setAttribute('aria-pressed', t === 'add');
+    hint();
+  }
+  function hint() {
+    $('edHint').textContent = E.tool === 'draw'
+      ? 'Товшиж цэг нэмнэ. Эхний цэг дээр дарж эсвэл Enter дарж дүрсээ хаана. Esc — болих.'
+      : E.tool === 'add' ? 'Үсгийн хүрээн дээр товшиж шинэ цэг нэмнэ.'
+      : 'Цэгийг чирж хэлбэрийг өөрчилнө · дүрсийг чирж зөөнө · шугам дээр давхар товшиж цэг нэмнэ · цэнхэр тасархай шугамыг чирж өргөнийг өөрчилнө.';
+  }
+
+  // geometry helpers
+  function segs(c) { // [[i0, [offIdx..], i1]] from on-curve to on-curve
+    const n = c.length, out = [];
+    const ons = []; c.forEach((p, i) => { if (p[2] === 'on') ons.push(i); });
+    for (let k = 0; k < ons.length; k++) {
+      const a = ons[k], b = ons[(k + 1) % ons.length], offs = [];
+      for (let j = (a + 1) % n; j !== b; j = (j + 1) % n) offs.push(j);
+      out.push([a, offs, b]);
+    }
+    return out;
+  }
+  function pathD(c) {
+    if (c.filter(p => p[2] === 'on').length < 1 || c.length < 2) return '';
+    let d = '';
+    segs(c).forEach(([a, offs, b], k) => {
+      const P = i => c[i][0] + ' ' + c[i][1];
+      if (k === 0) d += 'M' + P(a);
+      if (!offs.length) d += 'L' + P(b);
+      else if (c[offs[0]][2] === 'c' && offs.length >= 2) d += 'C' + P(offs[0]) + ' ' + P(offs[1]) + ' ' + P(b);
+      else if (offs.length === 1) d += 'Q' + P(offs[0]) + ' ' + P(b);
+      else { // several quadratic off-curves: implied on-curve points between them
+        for (let j = 0; j < offs.length; j++) {
+          const p = c[offs[j]], q = j + 1 < offs.length ? c[offs[j + 1]] : null;
+          const e = q ? ((p[0] + q[0]) / 2) + ' ' + ((p[1] + q[1]) / 2) : P(b);
+          d += 'Q' + p[0] + ' ' + p[1] + ' ' + e;
+        }
+      }
+    });
+    return d + 'Z';
+  }
+  function area(c) { let s = 0; for (let i = 0; i < c.length; i++) { const p = c[i], q = c[(i + 1) % c.length]; s += p[0] * q[1] - q[0] * p[1]; } return s / 2; }
+  function inside(pt, c) {
+    let r = false;
+    for (let i = 0, j = c.length - 1; i < c.length; j = i++) {
+      const a = c[i], b = c[j];
+      if ((a[1] > pt[1]) !== (b[1] > pt[1]) && pt[0] < (b[0] - a[0]) * (pt[1] - a[1]) / (b[1] - a[1]) + a[0]) r = !r;
+    }
+    return r;
+  }
+  function fixDirs() { // outer shapes clockwise, holes the other way (nonzero fill)
+    const cs = W().contours;
+    cs.forEach((c, i) => {
+      const p = c.find(q => q[2] === 'on') || c[0];
+      let depth = 0; cs.forEach((o, j) => { if (j !== i && o.length > 2 && inside(p, o)) depth++; });
+      const wantCW = depth % 2 === 0, cw = area(c) < 0;
+      if (wantCW !== cw) c.reverse();
+    });
+  }
+
+  // rendering
+  function el(tag, attrs, parent) {
+    const e = document.createElementNS(SVGNS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e); return e;
+  }
+  let G = null, scaleR = 10;
+  function render() {
+    const svg = $('edSvg'), w = W(), m = M();
+    svg.innerHTML = '';
+    const pad = m.upm * 0.12, top = Math.max(m.asc, m.cap) + pad, bot = Math.min(m.desc, 0) - pad;
+    const x0 = -pad - m.upm * 0.05, x1 = Math.max(w.width, m.width) + pad + m.upm * 0.05;
+    svg.setAttribute('viewBox', x0 + ' ' + (-top) + ' ' + (x1 - x0) + ' ' + (top - bot));
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    const rect = svg.getBoundingClientRect();
+    const upp = Math.max((x1 - x0) / (rect.width || 600), (top - bot) / (rect.height || 400));
+    scaleR = upp * 5.5;
+    G = el('g', { transform: 'scale(1,-1)' }, svg);
+    const guides = [[0, 'Суурь шугам', 'base'], [m.cap, 'Том үсэг'], [m.xh, 'Жижиг үсэг'], [m.desc, ''], [m.asc, '']];
+    guides.forEach(([y, label, cls]) => {
+      if (y == null) return;
+      el('line', { x1: x0 - m.upm * 20, x2: x1 + m.upm * 20, y1: y, y2: y, class: 'guide ' + (cls || '') }, G);
+      if (label) { const t = el('text', { x: x0 + upp * 6, y: -y - upp * 4, class: 'glabel', transform: 'scale(1,-1)', 'font-size': upp * 12 }, G); t.textContent = label; }
+    });
+    el('line', { x1: 0, x2: 0, y1: bot - m.upm * 20, y2: top + m.upm * 20, class: 'guide' }, G);
+    // original outline, faint, for comparison
+    if (w.touched || edits[E.cp]) {
+      const d0 = m.contours.map(pathD).join(''); if (d0) el('path', { d: d0, class: 'ghost' }, G);
+    }
+    w.contours.forEach((c, ci) => {
+      const p = el('path', { d: pathD(c), class: 'shape' + (E.sel && E.sel.c === ci ? ' sel' : ''), 'data-c': ci, 'fill-rule': 'nonzero' }, G);
+    });
+    // handles: lines from on-curve to adjacent off-curves
+    w.contours.forEach((c, ci) => {
+      segs(c).forEach(([a, offs, b]) => {
+        if (!offs.length) return;
+        el('line', { x1: c[a][0], y1: c[a][1], x2: c[offs[0]][0], y2: c[offs[0]][1], class: 'hl' }, G);
+        const l = offs[offs.length - 1];
+        el('line', { x1: c[b][0], y1: c[b][1], x2: c[l][0], y2: c[l][1], class: 'hl' }, G);
+      });
+    });
+    w.contours.forEach((c, ci) => c.forEach((p, pi) => {
+      const on = p[2] === 'on', sel = E.sel && E.sel.c === ci && E.sel.p === pi;
+      el(on ? 'rect' : 'circle', on
+        ? { x: p[0] - scaleR, y: p[1] - scaleR, width: scaleR * 2, height: scaleR * 2, class: 'pt' + (sel ? ' sel' : ''), 'data-c': ci, 'data-p': pi }
+        : { cx: p[0], cy: p[1], r: scaleR * 0.85, class: 'pt off' + (sel ? ' sel' : ''), 'data-c': ci, 'data-p': pi }, G);
+    }));
+    // advance width
+    el('line', { x1: w.width, x2: w.width, y1: bot, y2: top, class: 'wline' }, G);
+    el('line', { x1: w.width, x2: w.width, y1: bot, y2: top, class: 'whit', 'data-w': 1 }, G);
+    if (E.draft && E.draft.length) {
+      el('polyline', { points: E.draft.map(p => p[0] + ',' + p[1]).join(' ') + (E.hover ? ' ' + E.hover[0] + ',' + E.hover[1] : ''), class: 'draft' }, G);
+      E.draft.forEach((p, i) => el('rect', { x: p[0] - scaleR, y: p[1] - scaleR, width: scaleR * 2, height: scaleR * 2, class: 'pt' + (i === 0 ? ' sel' : '') }, G));
+    }
+    $('edWidth').textContent = 'Өргөн: ' + Math.round(w.width);
+    const sp = E.sel && E.sel.p != null ? W().contours[E.sel.c][E.sel.p] : null;
+    $('tDel').disabled = !E.sel;
+    $('tCurve').disabled = !(sp && sp[2] === 'on' && nextIsLine(E.sel.c, E.sel.p));
+    $('tUndo').disabled = !E.undo.length;
+    renderLettersMarks();
+  }
+  function renderLettersMarks() {
+    const b = $('edLetters').querySelector('[aria-pressed=true]');
+    if (b) b.classList.toggle('mod', !!(W().touched || edits[E.cp]));
+  }
+  function nextIsLine(ci, pi) { const c = W().contours[ci]; return segs(c).some(([a, offs]) => a === pi && !offs.length); }
+
+  function fontPt(ev) {
+    const pt = $('edSvg').createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+    const p = pt.matrixTransform(G.getScreenCTM().inverse());
+    return [Math.round(p.x), Math.round(p.y)];
+  }
+  function nearestSeg(pt) { // returns {c, seg, t, dist}
+    let best = null;
+    W().contours.forEach((c, ci) => segs(c).forEach(s => {
+      const [a, offs, b] = s;
+      for (let k = 0; k <= 24; k++) {
+        const t = k / 24, q = segPoint(c, s, t);
+        const d = Math.hypot(q[0] - pt[0], q[1] - pt[1]);
+        if (!best || d < best.dist) best = { c: ci, seg: s, t, dist: d };
+      }
+    }));
+    return best;
+  }
+  const lerp = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+  function segPoint(c, [a, offs, b], t) {
+    const P = c[a], Q = c[b];
+    if (!offs.length) return lerp(P, Q, t);
+    if (offs.length === 1) { const o = c[offs[0]]; return lerp(lerp(P, o, t), lerp(o, Q, t), t); }
+    const o1 = c[offs[0]], o2 = c[offs[1]];
+    const a1 = lerp(P, o1, t), a2 = lerp(o1, o2, t), a3 = lerp(o2, Q, t);
+    return lerp(lerp(a1, a2, t), lerp(a2, a3, t), t);
+  }
+  function splitAt(ci, s, t) {
+    const c = W().contours[ci], [a, offs, b] = s, P = c[a], Q = c[b], R = v => [Math.round(v[0]), Math.round(v[1])];
+    let ins;
+    if (!offs.length) ins = [[...R(lerp(P, Q, t)), 'on']];
+    else if (offs.length === 1) {
+      const o = c[offs[0]], l = lerp(P, o, t), r = lerp(o, Q, t), m = lerp(l, r, t);
+      ins = [[...R(l), 'q'], [...R(m), 'on'], [...R(r), 'q']];
+    } else {
+      const o1 = c[offs[0]], o2 = c[offs[1]];
+      const a1 = lerp(P, o1, t), a2 = lerp(o1, o2, t), a3 = lerp(o2, Q, t), b1 = lerp(a1, a2, t), b2 = lerp(a2, a3, t), m = lerp(b1, b2, t);
+      ins = [[...R(a1), 'c'], [...R(b1), 'c'], [...R(m), 'on'], [...R(b2), 'c'], [...R(a3), 'c']];
+    }
+    // rebuild contour: replace offs of this segment by ins
+    const out = [], skip = new Set(offs);
+    for (let i = 0; i < c.length; i++) {
+      if (skip.has(i)) continue;
+      out.push(c[i]);
+      if (i === a) out.push(...ins);
+    }
+    W().contours[ci] = out;
+    return out.indexOf(ins[offs.length ? Math.floor(ins.length / 2) : 0]);
+  }
+
+  // pointer interaction
+  const svgEl = $('edSvg');
+  svgEl.addEventListener('pointerdown', ev => {
+    if (!E) return;
+    const pt = fontPt(ev), t = ev.target, ds = t.dataset || {};
+    if (E.tool === 'draw') {
+      if (E.draft.length >= 3) {
+        const f = E.draft[0];
+        if (Math.hypot(f[0] - pt[0], f[1] - pt[1]) < scaleR * 2.2) { closeDraft(); return; }
+      }
+      E.draft.push(pt); render(); return;
+    }
+    if (E.tool === 'add') {
+      const b = nearestSeg(pt);
+      if (b && b.dist < scaleR * 5) { push(); const idx = splitAt(b.c, b.seg, Math.min(0.98, Math.max(0.02, b.t))); E.sel = { c: b.c, p: idx }; render(); }
+      return;
+    }
+    svgEl.setPointerCapture(ev.pointerId);
+    if (ds.w) { push(); E.drag = { kind: 'w' }; return; }
+    if (ds.p != null) {
+      push(); E.sel = { c: +ds.c, p: +ds.p };
+      E.drag = { kind: 'p', last: pt }; render(); return;
+    }
+    if (ds.c != null) {
+      push(); E.sel = { c: +ds.c };
+      E.drag = { kind: 'c', last: pt }; render(); return;
+    }
+    E.sel = null; render();
+  });
+  svgEl.addEventListener('pointermove', ev => {
+    if (!E) return;
+    const pt = fontPt(ev);
+    if (E.tool === 'draw' && E.draft && E.draft.length) { E.hover = pt; render(); return; }
+    if (!E.drag) return;
+    const d = E.drag;
+    if (d.kind === 'w') { W().width = Math.max(0, pt[0]); render(); return; }
+    const dx = pt[0] - d.last[0], dy = pt[1] - d.last[1]; d.last = pt;
+    if (!dx && !dy) return;
+    const c = W().contours[E.sel.c];
+    if (d.kind === 'c') c.forEach(p => { p[0] += dx; p[1] += dy; });
+    else {
+      const i = E.sel.p, p = c[i]; p[0] += dx; p[1] += dy;
+      if (p[2] === 'on') { // carry the handles along
+        const n = c.length, pr = c[(i - 1 + n) % n], nx = c[(i + 1) % n];
+        if (pr[2] !== 'on' && pr !== p) { pr[0] += dx; pr[1] += dy; }
+        if (nx[2] !== 'on' && nx !== p && nx !== pr) { nx[0] += dx; nx[1] += dy; }
+      }
+    }
+    render();
+  });
+  const endDrag = () => { if (E && E.drag) { E.drag = null; if (E.sel && E.sel.p == null) { fixDirs(); } render(); } };
+  svgEl.addEventListener('pointerup', endDrag);
+  svgEl.addEventListener('pointercancel', endDrag);
+  svgEl.addEventListener('dblclick', ev => {
+    if (!E || E.tool !== 'move') return;
+    const pt = fontPt(ev), b = nearestSeg(pt);
+    if (!b || b.dist > scaleR * 4) return;
+    push();
+    const t = Math.min(0.98, Math.max(0.02, b.t));
+    const idx = splitAt(b.c, b.seg, t);
+    E.sel = { c: b.c, p: idx }; render();
+  });
+  function closeDraft() {
+    if (!E.draft || E.draft.length < 3) return;
+    push();
+    W().contours.push(E.draft.map(p => [p[0], p[1], 'on']));
+    E.sel = { c: W().contours.length - 1 };
+    fixDirs();
+    setTool('move'); render();
+  }
+  function del() {
+    if (!E.sel) return;
+    push();
+    const cs = W().contours, c = cs[E.sel.c];
+    if (E.sel.p == null) cs.splice(E.sel.c, 1);
+    else {
+      const i = E.sel.p, p = c[i];
+      if (p[2] !== 'on') { // straighten that segment
+        const s = segs(c).find(([a, offs]) => offs.includes(i)), drop = new Set(s[1]);
+        cs[E.sel.c] = c.filter((_, j) => !drop.has(j));
+      } else {
+        const s = segs(c).find(([a]) => a === i), drop = new Set([i, ...(s ? s[1] : [])]);
+        const rest = c.filter((_, j) => !drop.has(j));
+        if (rest.filter(q => q[2] === 'on').length < 2) cs.splice(E.sel.c, 1); else cs[E.sel.c] = rest;
+      }
+    }
+    E.sel = null; render();
+  }
+  function toCurve() {
+    if (!E.sel || E.sel.p == null) return;
+    const c = W().contours[E.sel.c], i = E.sel.p, s = segs(c).find(([a, offs]) => a === i && !offs.length);
+    if (!s) return;
+    push();
+    const P = c[s[0]], Q = c[s[2]], R = v => [Math.round(v[0]), Math.round(v[1])];
+    c.splice(i + 1, 0, [...R(lerp(P, Q, 1 / 3)), 'c'], [...R(lerp(P, Q, 2 / 3)), 'c']);
+    E.sel = { c: E.sel.c, p: i + 1 }; render();
+  }
+  $('tMove').onclick = () => { setTool('move'); render(); };
+  $('tAdd').onclick = () => { setTool('add'); render(); };
+  $('tDraw').onclick = () => { setTool('draw'); E.sel = null; render(); };
+  $('tDel').onclick = del;
+  $('tCurve').onclick = toCurve;
+  $('tUndo').onclick = undo;
+  $('tReset').onclick = () => { push(); const m = M(); W().width = m.width; W().contours = clone(m.contours); W().reset = true; E.sel = null; render(); };
+  function closeEditor() { $('edModal').hidden = true; E = null; if (lastEdFocus && lastEdFocus.focus) lastEdFocus.focus(); }
+  $('edCancel').onclick = closeEditor;
+  $('edSave').onclick = () => {
+    let changed = false;
+    Object.entries(E.work).forEach(([cp, w]) => {
+      if (!w.touched) return;
+      changed = true;
+      const same = JSON.stringify(w.contours) === JSON.stringify(E.base[cp].contours) && w.width === E.base[cp].width;
+      if (same) delete edits[cp];
+      else edits[cp] = { width: Math.round(w.width), contours: w.contours };
+    });
+    closeEditor();
+    if (changed) { regenerate(); msg('Засварыг хадгаллаа. Татахад таны зурсан хэлбэр орно.'); }
+  };
+  document.addEventListener('keydown', ev => {
+    if (!E || $('edModal').hidden) return;
+    const k = ev.key;
+    if ((ev.ctrlKey || ev.metaKey) && k.toLowerCase() === 'z') { ev.preventDefault(); undo(); return; }
+    if (k === 'Escape') { ev.preventDefault(); if (E.tool === 'draw' && E.draft && E.draft.length) { E.draft = []; E.hover = null; render(); } else if (E.tool === 'draw') { setTool('move'); render(); } else closeEditor(); return; }
+    if (k === 'Enter' && E.tool === 'draw') { ev.preventDefault(); closeDraft(); return; }
+    if ((k === 'Delete' || k === 'Backspace') && E.sel && ev.target.tagName !== 'INPUT') { ev.preventDefault(); del(); return; }
+    const dirs = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
+    if (dirs[k] && E.sel) {
+      ev.preventDefault();
+      const st = ev.shiftKey ? 10 : 1, [dx, dy] = dirs[k].map(v => v * st), c = W().contours[E.sel.c];
+      push();
+      if (E.sel.p == null) c.forEach(p => { p[0] += dx; p[1] += dy; });
+      else { const p = c[E.sel.p]; p[0] += dx; p[1] += dy; }
+      render();
+    }
+  });
+  window.addEventListener('resize', () => { if (E) render(); });
+  $('editBtn').onclick = () => openEditor(0x04E8);
+  document.querySelectorAll('.tile').forEach(t => t.addEventListener('click', () => openEditor(t.querySelector('.g').textContent.codePointAt(0))));
 
   // ----- download counter (private: counted, never shown) -----
   function countDownload(ext) {

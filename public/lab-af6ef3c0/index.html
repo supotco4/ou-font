@@ -1841,7 +1841,7 @@ def build(data, opts):
     if src_o:
         plan.append((0x04E9, "bar", src_o, opts.get("barL", 85), opts.get("offL", 0)))
     up, lo, st = plan_ue(font, opts)
-    mapped = cyr_lookalikes(font, st)
+    mapped = [] if opts.get("onlyOU") else cyr_lookalikes(font, st)
     if up:
         plan.append((0x04AE, up[0], up[1], opts.get("fork", 100)))
     if lo:
@@ -1889,7 +1889,7 @@ def build(data, opts):
                "bar": "үсэгт зураас нэмж"}.get(kind, "үсгийг хуулж")
         report.append(f"{chr(cp)}: «{chr(_rev(cmap, src))}» {how} үүсгэлээ")
 
-    umap = opts.get("map") or {}
+    umap = {} if opts.get("onlyOU") else (opts.get("map") or {})
     no_kern = set()
     if umap:
         cmap_now = font.getBestCmap()
@@ -2093,6 +2093,205 @@ def _rev(cmap, gname):
         if v == gname:
             return k
     return ord("?")
+
+
+# ---------- hand editing ----------
+def _metrics(font):
+    cmap = font.getBestCmap()
+    gs = font.getGlyphSet()
+
+    def top(ch):
+        g = cmap.get(ord(ch))
+        if not g:
+            return None
+        b = BoundsPen(gs)
+        gs[g].draw(b)
+        return round(b.bounds[3]) if b.bounds else None
+
+    upm = font["head"].unitsPerEm
+    hh = font["hhea"]
+    return {"upm": upm, "asc": hh.ascent, "desc": hh.descent,
+            "cap": top("H") or top("I") or round(upm * 0.7),
+            "xh": top("x") or top("o") or None}
+
+
+def glyph_outline(data, cp):
+    """Contours of the glyph for codepoint cp as point lists [x, y, kind]
+    (kind: 'on', 'q' quadratic or 'c' cubic off-curve), plus metrics."""
+    from fontTools.pens.recordingPen import DecomposingRecordingPen
+    font = TTFont(io.BytesIO(data))
+    cmap = font.getBestCmap()
+    gname = cmap.get(cp)
+    if not gname:
+        return None
+    gs = font.getGlyphSet()
+    pen = DecomposingRecordingPen(gs)
+    gs[gname].draw(pen)
+    contours, cur = [], None
+    for op, args in pen.value:
+        if op == "moveTo":
+            cur = [[round(args[0][0]), round(args[0][1]), "on"]]
+        elif op == "lineTo":
+            cur.append([round(args[0][0]), round(args[0][1]), "on"])
+        elif op == "curveTo":
+            for p in args[:-1]:
+                cur.append([round(p[0]), round(p[1]), "c"])
+            cur.append([round(args[-1][0]), round(args[-1][1]), "on"])
+        elif op == "qCurveTo":
+            pts = list(args)
+            closed_off = pts[-1] is None
+            if closed_off:  # contour made only of off-curve points
+                pts = pts[:-1]
+                cur = []
+                pts = pts + [pts[0]]
+                for i in range(len(pts) - 1):
+                    a, b = pts[i], pts[i + 1]
+                    cur.append([round(a[0]), round(a[1]), "q"])
+                    cur.append([round((a[0] + b[0]) / 2), round((a[1] + b[1]) / 2), "on"])
+                continue
+            offs, end = pts[:-1], pts[-1]
+            for i, p in enumerate(offs):  # one off-curve per segment: make implied points explicit
+                cur.append([round(p[0]), round(p[1]), "q"])
+                if i < len(offs) - 1:
+                    n = offs[i + 1]
+                    cur.append([round((p[0] + n[0]) / 2), round((p[1] + n[1]) / 2), "on"])
+            cur.append([round(end[0]), round(end[1]), "on"])
+        elif op in ("closePath", "endPath"):
+            if cur:
+                if len(cur) > 1 and cur[-1][2] == "on" and cur[-1][:2] == cur[0][:2]:
+                    cur.pop()
+                contours.append(cur)
+            cur = None
+    if cur:
+        contours.append(cur)
+    out = _metrics(font)
+    out.update({"cp": cp, "width": gs[gname].width, "contours": contours})
+    return out
+
+
+def present_cps(data, cps):
+    cmap = TTFont(io.BytesIO(data)).getBestCmap()
+    return [c for c in cps if c in cmap]
+
+
+def _draw_points(pen, contour):
+    pts = contour
+    n = len(pts)
+    start = next((i for i, p in enumerate(pts) if p[2] == "on"), None)
+    if start is None or n < 2:
+        return
+    seq = pts[start:] + pts[:start] + [pts[start]]
+    pen.moveTo(tuple(seq[0][:2]))
+    offs = []
+    for p in seq[1:]:
+        if p[2] != "on":
+            offs.append(p)
+            continue
+        xy = tuple(p[:2])
+        if not offs:
+            pen.lineTo(xy)
+        elif offs[0][2] == "c" and len(offs) == 2:
+            pen.curveTo(tuple(offs[0][:2]), tuple(offs[1][:2]), xy)
+        elif offs[0][2] == "c":
+            pen.qCurveTo(*[tuple(o[:2]) for o in offs], xy) if len(offs) == 1 else \
+                pen.curveTo(*[tuple(o[:2]) for o in offs[:2]], xy)
+        else:
+            pen.qCurveTo(*[tuple(o[:2]) for o in offs], xy)
+        offs = []
+    pen.closePath()
+
+
+def apply_edits(data, edits):
+    """edits: {cp: {"width": w, "contours": [...]}} drawn by hand. Each becomes
+    a new glyph so that shared Latin glyphs stay as they were."""
+    font = TTFont(io.BytesIO(data))
+    font.flavor = None
+    is_cff = "CFF " in font
+    gs = font.getGlyphSet()
+    order = list(font.getGlyphOrder())
+    hmtx = font["hmtx"]
+    done = {}
+    for key, e in edits.items():
+        cp = int(key)
+        gname = "uni%04X.ed" % cp
+        width = int(round(e.get("width", 500)))
+        contours = [c for c in e.get("contours", []) if len(c) >= 2]
+        if is_cff:
+            pen = T2CharStringPen(width, gs)
+            dpen = pen
+        else:
+            pen = TTGlyphPen(gs)
+            dpen = Cu2QuPen(pen, max_err=1.0, reverse_direction=False)
+        for c in contours:
+            _draw_points(dpen, c)
+        if gname not in order:
+            order.append(gname)
+        done[gname] = (cp, width, pen)
+    if not done:
+        return data
+    font.setGlyphOrder(order)
+    if is_cff:
+        cff = font["CFF "].cff
+        td = cff.topDictIndex[0]
+        cs = td.CharStrings
+        priv = td.Private if hasattr(td, "Private") else None
+        dflt = getattr(priv, "defaultWidthX", 0) if priv is not None else 0
+        nom = getattr(priv, "nominalWidthX", 0) if priv is not None else 0
+        for gname, (cp, width, pen) in done.items():
+            pen._width = None if width == dflt else width - nom
+            c = pen.getCharString(private=priv, globalSubrs=cff.GlobalSubrs)
+            if gname in cs.charStrings:
+                if cs.charStringsAreIndexed:
+                    cs.charStringsIndex.items[cs.charStrings[gname]] = c
+                else:
+                    cs.charStrings[gname] = c
+            elif cs.charStringsAreIndexed:
+                cs.charStringsIndex.append(c)
+                cs.charStrings[gname] = len(cs.charStringsIndex) - 1
+                td.charset.append(gname)
+            else:
+                cs.charStrings[gname] = c
+                td.charset.append(gname)
+        for gname, (cp, width, pen) in done.items():
+            hmtx[gname] = (width, 0)
+        gs2 = font.getGlyphSet()
+        for gname, (cp, width, pen) in done.items():
+            polys = _polys(gs2, gname)
+            hmtx[gname] = (width, round(_bbox(polys)[0]) if polys else 0)
+    else:
+        glyf = font["glyf"]
+        for gname, (cp, width, pen) in done.items():
+            g = pen.glyph()
+            g.recalcBounds(glyf)
+            glyf[gname] = g
+            hmtx[gname] = (width, getattr(g, "xMin", 0) if g.numberOfContours else 0)
+    if "vmtx" in font:
+        some = next(iter(font["vmtx"].metrics.values()), (0, 0))
+        for gname in done:
+            font["vmtx"][gname] = some
+    if "gvar" in font:
+        for gname in done:
+            font["gvar"].variations[gname] = []
+    for t in font["cmap"].tables:
+        if t.isUnicode() and t.format in (4, 12, 13):
+            for gname, (cp, *_r) in done.items():
+                t.cmap[cp] = gname
+    for tag in ("hdmx", "LTSH", "VDMX", "DSIG", "HVAR", "VVAR"):
+        if tag in font:
+            del font[tag]
+    out = io.BytesIO()
+    font.save(out)
+    return out.getvalue()
+
+
+def build_all(data, opts, edits):
+    """build() and then the hand edits. Returns (final bytes, base bytes, ext)."""
+    out, ext, rep = build(data, opts)
+    base = out if out is not None else data
+    if edits:
+        out = apply_edits(base, edits)
+        ext = "otf" if out[:4] == b"OTTO" else "ttf"
+    return (out or b""), base, (ext or "")
 
 
 def zip_one(name, data):
