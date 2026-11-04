@@ -3301,8 +3301,7 @@ def font_info(data):
   }
   $('mOU').onclick = () => setMode('ou');
   $('mAll').onclick = () => setMode('all');
-  $('mAll').innerHTML = 'Бүх үсэг <span class="beta">beta</span>';
-  $('mAll').title = 'Туршилтын боломж: дутуу бүх кирилл үсгийг үүсгэнэ';
+  $('mAll').title = 'Дутуу бүх кирилл үсгийг үүсгэнэ';
   setMode(mode, true);
 
   async function regenerate() {
