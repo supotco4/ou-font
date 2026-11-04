@@ -1724,8 +1724,32 @@ def _part_hbar(font, M, x0, x1, yb, kind="top", ytop=None):
     if src is None:
         return [_rectp(x0, yb, x1, yb + M["bt"], M["sign"])]
     bx0, by0, bx1, by1 = _bboxP(src)
-    k = (x1 - x0) / max(1e-6, bx1 - bx0)
     dy = (ytop - by1) if ytop is not None else (yb - by0)
+    # stretch only the straight middle: the ends (serifs, curls) keep their size
+    L = bx1 - bx0
+    thick = []
+    N = 40
+    for k in range(N):
+        x = bx0 + L * (k + 0.5) / N
+        h = _hitsP(src, "x", x)
+        thick.append((h[-1] - h[0]) if len(h) >= 2 else 0.0)
+    mid_t = sorted(thick)[N // 2]
+    plain = [abs(t - mid_t) <= max(1.0, mid_t * 0.06) for t in thick]
+    kl = next((k for k in range(N) if plain[k]), 0)
+    kr = next((k for k in range(N) if plain[N - 1 - k]), 0)
+    eL, eR = L * kl / N, L * kr / N
+    want = x1 - x0
+    if (kl or kr) and eL + eR < want * 0.8 and eL < L * 0.35 and eR < L * 0.35:
+        cl, cr = bx0 + eL, bx1 - eR
+        left = _cut(src, "x", cl, False) if eL else []
+        right = _cut(src, "x", cr, True) if eR else []
+        mid = _cut(_cut(src, "x", cl, True), "x", cr, False)
+        km = (want - eL - eR) / max(1e-6, cr - cl)
+        out = _tx(left, (1, 0, 0, 1, x0 - bx0, dy)) if left else []
+        out += _tx(mid, (km, 0, 0, 1, x0 + eL - cl * km, dy))
+        out += _tx(right, (1, 0, 0, 1, x1 - bx1, dy)) if right else []
+        return out
+    k = want / max(1e-6, L)
     return _tx(src, (k, 0, 0, 1, x0 - bx0 * k, dy))
 
 
