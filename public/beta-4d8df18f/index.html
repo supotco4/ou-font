@@ -1534,8 +1534,14 @@ def map_suggest(font):
         has = cp in cmap or cp in getattr(font, "_mn_found", {})
         idea = MAP_IDEAS.get(cp)
         sug = None
+        real = getattr(font, "_mn_realcmap", None) or {}
         if not has and idea and ord(idea[0]) in cmap and not (faux and idea[0].isalpha()):
             sug = {"src": idea[0], "t": idea[1]}
+        elif not has and idea and idea[1] == "none" and len(idea) == 2 and ord(idea[0]) in real \
+                and cp not in CONSTRUCT:
+            # the only source was set aside as "drawn like Cyrillic" (stylised
+            # fonts): its own drawing still beats leaving the letter out
+            sug = {"src": idea[0], "t": "none"}
             if len(idea) > 2 and ord(idea[2]) in cmap:
                 sug["src2"] = idea[2]
         if not has and not faux and cp in CONSTRUCT and not (idea and idea[1] == "none" and sug):
@@ -2258,7 +2264,7 @@ def _ssub(sg, t0, t1):
     return tuple(reversed(r)) if rev else r
 
 
-def _union_pieces(pieces, samples=8, max_segs=400):
+def _union_core(pieces, samples=8, max_segs=400):
     """Merge overlapping contours into one outline (nonzero union). Returns
     new pieces, or the input unchanged when that isn't needed or possible."""
     segs = []
@@ -2457,6 +2463,92 @@ def _union_pieces(pieces, samples=8, max_segs=400):
         if len(pc) >= 2:
             result.append(pc)
     return result or pieces
+
+
+def _piece_rev(pc):
+    out = []
+    for sg in reversed(pc):
+        out.append(("l", sg[2], sg[1]) if sg[0] == "l" else ("c", sg[4], sg[3], sg[2], sg[1]))
+    return out
+
+
+def _union_pieces(pieces, samples=8, max_segs=400):
+    """Union with safety checks: contours are first given consistent
+    directions (outer one way, holes the other), and the result is used only
+    if it covers the same area as the input."""
+    try:
+        P = [pc for pc in pieces if pc and len(pc) >= 2]
+        if len(P) < 2:
+            return pieces
+        flat = [_flat(pc) for pc in P]
+        areas = [_area(f) for f in flat]
+        big = max(range(len(P)), key=lambda i: abs(areas[i]))
+        sgn = 1 if areas[big] > 0 else -1
+        fixed = []
+        for i, pc in enumerate(P):
+            pt = flat[i][0]
+            depth = sum(1 for j, f in enumerate(flat) if j != i and _pinside(pt, f))
+            want = sgn if depth % 2 == 0 else -sgn
+            fixed.append(pc if (areas[i] > 0) == (want > 0) else _piece_rev(pc))
+        res = _union_core(fixed, samples, max_segs)
+        if res is fixed:
+            return pieces
+        # same filled area? compare both on a grid, row by row
+        bx0, by0, bx1, by1 = _bbox(flat)
+        fa = [_flat(pc) for pc in fixed]
+        fr = [_flat(pc) for pc in res]
+        n = 48
+        xs = [bx0 + (bx1 - bx0) * (gx + 0.5) / n for gx in range(n)]
+
+        def row(polys, y):
+            cr = []
+            for r in polys:
+                m = len(r)
+                for i in range(m):
+                    ax, ay = r[i]
+                    bx, by = r[(i + 1) % m]
+                    if (ay <= y) != (by <= y):
+                        cr.append((ax + (y - ay) * (bx - ax) / (by - ay), 1 if by > ay else -1))
+            cr.sort()
+            out, w, k = [], 0, 0
+            for x in xs:
+                while k < len(cr) and cr[k][0] < x:
+                    w += cr[k][1]
+                    k += 1
+                out.append(w != 0)
+            return out
+
+        diff = tot = 0
+        for gy in range(n):
+            y = by0 + (by1 - by0) * (gy + 0.5) / n
+            ra, rb = row(fa, y), row(fr, y)
+            tot += sum(ra)
+            diff += sum(1 for a, b in zip(ra, rb) if a != b)
+        if tot and diff / tot > 0.02:
+            return pieces
+        return res
+    except Exception:
+        return pieces
+
+
+def _windn(p, polys):
+    w = 0
+    px, py = p
+    for r in polys:
+        n = len(r)
+        for i in range(n):
+            ax, ay = r[i]
+            bx, by = r[(i + 1) % n]
+            if ay <= py:
+                if by > py and (bx - ax) * (py - ay) - (px - ax) * (by - ay) > 0:
+                    w += 1
+            elif by <= py and (bx - ax) * (py - ay) - (px - ax) * (by - ay) < 0:
+                w -= 1
+    return w
+
+
+def _pinside(pt, poly):
+    return _windn(pt, [poly]) != 0
 
 
 def construct(font, cp, pen):
@@ -2687,7 +2779,15 @@ def build(data, opts):
                     pen = TTGlyphPen(gs)
                     dpen = Cu2QuPen(pen, max_err=1.0, reverse_direction=False)
                 width = construct(font, ucp, dpen)
-                if not width:
+                if not width:  # couldn't build it: fall back to a look-alike, if any
+                    idea = MAP_IDEAS.get(ucp)
+                    realmap = getattr(font, "_mn_realcmap", None) or cmap_now
+                    alt = idea and idea[1] == "none" and (cmap_now.get(ord(idea[0])) or realmap.get(ord(idea[0])))
+                    if alt:
+                        mapped.append((ucp, alt))
+                        if lcp and lcp not in cmap_now:
+                            mapped.append((lcp, alt))
+                        done.append(chr(ucp))
                     continue
                 anysrc = cmap_now.get(ord("H")) or cmap_now.get(ord("I")) or list(cmap_now.values())[0]
                 new_glyphs[gname] = (ucp, anysrc, width, pen)
@@ -2696,9 +2796,10 @@ def build(data, opts):
                     lower_jobs.append((lcp, gname, ("make", ucp), anysrc))
                 done.append(chr(ucp) + "⚙")
                 continue
-            if not srcch or ord(srcch[0]) not in cmap_now:
+            realmap = getattr(font, "_mn_realcmap", None) or {}
+            if not srcch or (ord(srcch[0]) not in cmap_now and ord(srcch[0]) not in realmap):
                 continue
-            src = cmap_now[ord(srcch[0])]
+            src = cmap_now.get(ord(srcch[0])) or realmap[ord(srcch[0])]
             src2 = cmap_now.get(ord(src2ch[0])) if src2ch else None
             lcp = ucp + 0x20 if 0x0410 <= ucp <= 0x042F else (0x0451 if ucp == 0x0401 else None)
             mapped[:] = [(c, g) for c, g in mapped if c not in (ucp, lcp)]
