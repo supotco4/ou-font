@@ -1514,6 +1514,7 @@ def _apply_faux(font):
     if not r:
         return {}
     v, found, _ = r
+    font._mn_realcmap = font.getBestCmap()
     font.getBestCmap = lambda: v
     font._mn_found = found
     return found
@@ -2094,6 +2095,16 @@ def make_de_pe(font, M):        # Д  ← П on a base bar with two feet
 def make_el_yt(font, M):        # Л  ← lower part of Y as the leg + T without the right half of its bar
     T, wt = _load(font, "T")
     Y, wy = _load(font, "Y")
+    real = getattr(font, "_mn_realcmap", None)
+    hidden = False
+    if not Y and real and ord("Y") in real:  # a Ч-like Y may still hold the hooked leg we want
+        hidden = True
+        saved = font.getBestCmap
+        font.getBestCmap = lambda: real
+        try:
+            Y, wy = _load(font, "Y")
+        finally:
+            font.getBestCmap = saved
     if not T or not Y:
         return None
     tx0, ty0, tx1, ty1 = _bboxP(T)
@@ -2118,28 +2129,47 @@ def make_el_yt(font, M):        # Л  ← lower part of Y as the leg + T without
     if fork is None:
         return None
     cut_y = fork - (fork - yy0) * 0.08
+    hf = _hitsP(Y, "y", fork)
+    if len(hf) < 2:
+        return None
+    s0, s1 = hf[0], hf[-1]
+    if s1 - s0 > M["s"] * 2.2:
+        return None  # not a stem where the arms meet (a crossbar, as in Ч)
+    # does the stem run on up to the top (a J/U-shaped Y whose arm hangs off it)?
+    ht = _hitsP(Y, "y", yy1 - (yy1 - yy0) * 0.06)
+    full = any(abs(ht[i] - s0) < M["s"] * 0.35 and abs(ht[i + 1] - s1) < M["s"] * 0.35 for i in range(0, len(ht) - 1, 2))
+    if hidden and not full:
+        return None
     leg = _cut(Y, "y", cut_y, False)
+    if full:  # keep the whole stem, drop only the arm beside it
+        leg = leg + _cut(_cut(_cut(_cut(Y, "y", cut_y, True), "y", bar_bot, False), "x", s0 - 0.5, True), "x", s1 + 0.5, False)
     if not leg:
         return None
     lx0, ly0, lx1, ly1 = _bboxP(leg)
     H = bar_bot - ty0
-    ky = H / (ly1 - ly0)
-    leg = _tx(leg, (1, 0, 0, ky, 0, ty0 - ly0 * ky))  # stretch up to the bar
+    top = _hitsP(leg, "y", ly1 - (ly1 - ly0) * 0.03)
+    mh = _hitsP(leg, "y", ly0 + (ly1 - ly0) * 0.6)
+    if len(top) < 2 or len(mh) < 2:
+        return None
+    sw = top[1] - top[0]
+    # a foot that swings out to the left (a hook) already reads as Л;
+    # a symmetric serif foot does not
+    hooked = (mh[0] - lx0) > sw * 0.8 and (mh[0] - lx0) > (lx1 - mh[-1]) * 2
+    if hooked:  # keep the hook as drawn; carry its stem straight up to the bar
+        leg = _tx(leg, (1, 0, 0, 1, 0, ty0 - ly0))
+        lt = ly1 - ly0 + ty0
+        if lt < bar_bot:
+            leg = leg + [_rectp(top[0], lt, top[1], bar_bot, M["sign"])]
+    else:
+        if (lx1 - lx0) > sw * 2.6:
+            return None  # an ornate Y: leave Л to the H-based builder
+        ky = H / (ly1 - ly0)
+        leg = _tx(leg, (1, 0, 0, ky, 0, ty0 - ly0 * ky))  # stretch up to the bar
+        sh = 0.3 + max(0.0, _slant(font))  # a straight stem would make П: lean it out
+        leg = _tx(leg, (1, 0, sh, 1, -sh * bar_bot, 0))
     top = _hitsP(leg, "y", bar_bot - H * 0.03)
     if len(top) < 2:
         return None
-    sw = top[1] - top[0]
-    mh = _hitsP(leg, "y", ty0 + H * 0.5)
-    lb = _bboxP(leg)
-    # a foot that swings out to the left (a hook) already reads as Л;
-    # a symmetric serif foot does not
-    hooked = len(mh) >= 2 and (mh[0] - lb[0]) > sw * 0.8 and (mh[0] - lb[0]) > (lb[2] - mh[-1]) * 2
-    if not hooked and (lb[2] - lb[0]) > sw * 2.6:
-        return None  # an ornate Y: leave Л to the H-based builder
-    if not hooked:  # a straight stem would make П: lean it out
-        sh = H * (0.3 + max(0.0, _slant(font))) / H
-        leg = _tx(leg, (1, 0, sh, 1, -sh * bar_bot, 0))
-        top = _hitsP(leg, "y", bar_bot - H * 0.03)
     leg = _tx(leg, (1, 0, 0, 1, tx0 - top[0], 0))  # its top under the bar's left end
     pieces = leg + right
     px0 = _bboxP(pieces)[0]
