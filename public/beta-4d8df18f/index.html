@@ -1683,7 +1683,83 @@ def _measure(font):
             r = min(rr, key=lambda r: abs((r[0] + r[1]) / 2 - cap / 2))
             bt = r[1] - r[0]
     bt = bt or s * 0.85
-    return {"cap": cap, "sign": sign, "s": s, "bt": bt, "desc": cap * 0.16}
+    return {"cap": cap, "sign": sign, "s": s, "bt": bt, "desc": cap * 0.16, "font": font}
+
+
+# ---------- parts copied from other letters (never drawn from scratch) ----------
+def _part_hbar(font, M, x0, x1, yb, kind="top", ytop=None):
+    """A horizontal bar copied from another letter - T's top bar (kind 'top')
+    or H's crossbar ('mid') - stretched to run from x0 to x1, its bottom at yb."""
+    src = None
+    if kind == "top":
+        T, _ = _load(font, "T")
+        if T:
+            tx0, ty0, tx1, ty1 = _bboxP(T)
+            # the bar: rows from the top that are mostly ink across the width
+            fill = lambda y: sum(r[1] - r[0] for r in _runs(_hitsP(T, "y", y)))
+            W = tx1 - tx0
+            bar_bot = None
+            for k in range(1, 80):
+                y = ty1 - (ty1 - ty0) * k / 80
+                if fill(y) < W * 0.6:
+                    bar_bot = y + (ty1 - ty0) / 160
+                    break
+            if bar_bot is not None and ty1 - bar_bot < (ty1 - ty0) * 0.4:
+                b = _cut(T, "y", bar_bot, True)
+                if b and (_bboxP(b)[2] - _bboxP(b)[0]) > W * 0.8:
+                    src = b
+    if src is None:
+        H, _ = _load(font, "H")
+        if H:
+            hx0, hy0, hx1, hy1 = _bboxP(H)
+            hl = _runs(_hitsP(H, "y", hy0 + (hy1 - hy0) * 0.2))
+            rr = _runs(_hitsP(H, "x", (hx0 + hx1) / 2))
+            if len(hl) >= 2 and rr:
+                g = max(range(len(hl) - 1), key=lambda i: hl[i + 1][0] - hl[i][1])
+                cb = min(rr, key=lambda r: abs((r[0] + r[1]) / 2 - (hy0 + hy1) / 2))  # the crossbar, not serifs
+                b = _cut(_cut(H, "x", hl[g][1], True), "x", hl[g + 1][0], False)
+                b = _cut(_cut(b, "y", cb[0] - 0.5, True), "y", cb[1] + 0.5, False) if b else b
+                if b:
+                    src = b
+    if src is None:
+        return [_rectp(x0, yb, x1, yb + M["bt"], M["sign"])]
+    bx0, by0, bx1, by1 = _bboxP(src)
+    k = (x1 - x0) / max(1e-6, bx1 - bx0)
+    dy = (ytop - by1) if ytop is not None else (yb - by0)
+    return _tx(src, (k, 0, 0, 1, x0 - bx0 * k, dy))
+
+
+def _part_stroke(font, M, h, end="bottom"):
+    """A short upright stroke copied from H's left leg - its foot (end
+    'bottom', with any serif) or its head ('top') - h tall.
+    Returns (pieces, x0, x1, y0, y1)."""
+    st = _stem_piece(font, M)
+    if not st:
+        return None
+    leg = st[0]
+    lx0, ly0, lx1, ly1 = _bboxP(leg)
+    h = min(h, ly1 - ly0)
+    pc = _cut(leg, "y", ly0 + h, False) if end == "bottom" else _cut(leg, "y", ly1 - h, True)
+    if not pc:
+        return None
+    x0, y0, x1, y1 = _bboxP(pc)
+    return pc, x0, x1, y0, y1
+
+
+def _place(pc, dx, dy):
+    return _tx(pc, (1, 0, 0, 1, dx, dy))
+
+
+def _part_feet(font, M, bl, br, ybase):
+    """Two short feet below ybase, copied from H's leg foot, flush with bl and br."""
+    r = _part_stroke(font, M, M["desc"], "bottom")
+    if not r:
+        fs = M["s"]
+        return [_rectp(bl, ybase - M["desc"], bl + fs, ybase, M["sign"]),
+                _rectp(br - fs, ybase - M["desc"], br, ybase, M["sign"])]
+    pc, x0, x1, y0, y1 = r
+    dy = ybase - y1
+    return _place(pc, bl - x0, dy) + _place(pc, br - x1, dy)
 
 
 def _tail(pieces, M, right=True):
@@ -1697,6 +1773,11 @@ def _tail(pieces, M, right=True):
     probe = (tx0 + min(tx1, x1)) / 2
     h = _hitsP(pieces, "x", probe)
     top = (h[0] if h else y0) + 1
+    font = M.get("font")
+    r = _part_stroke(font, M, top - (y0 - M["desc"]), "bottom") if font else None
+    if r:  # the foot of H's leg, hanging below the corner
+        pc, px0, px1, py0, py1 = r
+        return _place(pc, (tx1 - px1) if right else (tx0 - px0), (y0 - M["desc"]) - py0)
     return [_rectp(tx0, y0 - M["desc"], tx1, top, M["sign"])]
 
 
@@ -1730,8 +1811,20 @@ def _sha(font, M):              # Ш  ← U split in the middle, a stem added
     D = cw + s
     left = _cut(U, "x", cx, False)
     right = _tx(_cut(U, "x", cx, True), (1, 0, 0, 1, D, 0))
-    fill = [_rectp(cx, hy[0], cx + D, bar_top, M["sign"])]
-    stem = [_rectp(cx + (D - s) / 2, bar_top, cx + (D + s) / 2, y1, M["sign"])]
+    # the gap is bridged with U's own bottom, and the middle stem is H's leg
+    slab = _cut(_cut(_cut(U, "x", cx - cw / 2, True), "x", cx + cw / 2, False), "y", bar_top, False)
+    if slab:
+        sx0, _, sx1, _ = _bboxP(slab)
+        k = D / max(1e-6, sx1 - sx0)
+        fill = _tx(slab, (k, 0, 0, 1, cx - sx0 * k, 0))
+    else:
+        fill = [_rectp(cx, hy[0], cx + D, bar_top, M["sign"])]
+    r = _part_stroke(font, M, y1 - bar_top, "top")
+    if r:
+        pc, px0, px1, py0, py1 = r
+        stem = _place(pc, cx + D / 2 - (px0 + px1) / 2, bar_top - py0)
+    else:
+        stem = [_rectp(cx + (D - s) / 2, bar_top, cx + (D + s) / 2, y1, M["sign"])]
     return left + right + fill + stem, w + D
 
 
@@ -1783,7 +1876,14 @@ def make_ef(font, M):           # Ф  ← O split + stem
     s = M["s"]
     left = _cut(O, "x", cx, False)
     right = _tx(_cut(O, "x", cx, True), (1, 0, 0, 1, s, 0))
-    stem = [_rectp(cx, y0, cx + s, y1, M["sign"])]
+    st = _stem_piece(font, M)
+    if st:  # H's leg, stretched to the height of O
+        leg = st[0]
+        lx0, ly0, lx1, ly1 = _bboxP(leg)
+        ky = (y1 - y0) / max(1e-6, ly1 - ly0)
+        stem = _tx(leg, (1, 0, 0, ky, cx + s / 2 - (lx0 + lx1) / 2, y0 - ly0 * ky))
+    else:
+        stem = [_rectp(cx, y0, cx + s, y1, M["sign"])]
     return left + right + stem, w + s
 
 
@@ -1808,7 +1908,7 @@ def make_yu(font, M):           # Ю  ← I + bar + O
     stem = _tx(I, (1, 0, 0, 1, lsb - ix0, 0))
     bx0 = lsb + s
     bx1 = bx0 + barlen
-    bar = [_rectp(bx0, mid - M["bt"] / 2, bx1, mid + M["bt"] / 2, M["sign"])]
+    bar = _part_hbar(font, M, bx0 - 1, bx1 + 1, mid - M["bt"] / 2, "mid")  # H's crossbar
     Om = _tx(Oc, (1, 0, 0, 1, bx1 - cut, 0))
     adv = int(bx1 + (ox1 - cut) + (w - ox1))
     return stem + bar + Om, adv
@@ -1832,9 +1932,8 @@ def make_de(font, M):           # Д  ← top of A stretched + base bar + feet
         return None
     ext = M["s"] * 0.3
     bl, br = h[0] - ext, h[-1] + ext
-    base = [_rectp(bl, 0, br, bt, M["sign"])]
-    fs = M["s"] * 0.9
-    feet = [_rectp(bl, -M["desc"], bl + fs, 0, M["sign"]), _rectp(br - fs, -M["desc"], br, 0, M["sign"])]
+    base = _part_hbar(font, M, bl, br, 0, "top")  # T's top bar, stretched
+    feet = _part_feet(font, M, bl, br, 0)
     lsb, rsb = x0, w - x1
     pieces = _tx(tri + base + feet, (1, 0, 0, 1, lsb - bl, 0))
     return pieces, int(lsb + (br - bl) + rsb)
@@ -1914,20 +2013,8 @@ def make_e_rev(font, M):        # Э  ← mirrored C + middle bar
     bx0 = x0 + (x1 - x0) * 0.3
     if rL - bx0 < M["s"] * 0.5:
         return Cm, w
-    # the bar's right end follows the curve of the stroke, so nothing overlaps
-    # (overlapping contours show as holes in some renderers)
-    yb, yt = mid - M["bt"] / 2, mid + M["bt"] / 2
-    edge = []
-    for k in range(7):
-        y = yb + (yt - yb) * k / 6
-        hh = _hitsP(Cm, "y", y)
-        if len(hh) < 2:
-            return None
-        edge.append((hh[-2], y))
-    pts = [(bx0, yb)] + edge + [(bx0, yt)]
-    if M["sign"] < 0:
-        pts.reverse()
-    bar = [[("l", pts[i], pts[(i + 1) % len(pts)]) for i in range(len(pts))]]
+    # H's crossbar, reaching into the stroke; the overlap is merged afterwards
+    bar = _part_hbar(font, M, bx0, rL + M["s"] * 0.4, mid - M["bt"] / 2, "mid")
     return Cm + bar, w
 
 
@@ -1995,7 +2082,7 @@ def make_short_i(font, M):      # Й  ← И + breve (or a short bar)
                 bx0, by0, bx1, by1 = _bboxP(b)
                 return I + _tx(b, (1, 0, 0, 1, cx - (bx0 + bx1) / 2, iy1 + gap - by0)), w
     bw = (ix1 - ix0) * 0.42
-    bar = [_rectp(cx - bw / 2, iy1 + gap, cx + bw / 2, iy1 + gap + M["bt"] * 0.7, M["sign"])]
+    bar = _part_hbar(font, M, cx - bw / 2, cx + bw / 2, iy1 + gap, "mid")  # a piece of H's crossbar
     return I + bar, w
 
 
@@ -2022,7 +2109,7 @@ def make_pe(font, M):           # П  ← legs of H + a top bar
     mid = _cut(_cut(H, "y", bar[1], True), "y", top, False)
     band = _cut(_cut(H, "y", bar[0], True), "y", bar[1], False)
     band = _cut(band, "x", lR, False) + _cut(band, "x", rL, True)
-    tb = [_rectp(hl[0][0], top, hl[-1][1], y1, M["sign"])]
+    tb = _part_hbar(font, M, hl[0][0], hl[-1][1], top, "top", ytop=y1)  # T's top bar
     return low + mid + band + tb, w
 
 
@@ -2073,7 +2160,7 @@ def make_el(font, M):           # Л  ← right leg of H + top bar + a slanted l
     bt = M["bt"]
     top = y1 - bt
     right = _cut(_cut(H, "x", rL - 0.5, True), "y", top, False)
-    bar = [_rectp(lL, top, rR, y1, M["sign"])]
+    bar = _part_hbar(font, M, lL, rR, top, "top", ytop=y1)  # T's top bar
     d = (y1 - y0) * (0.3 + max(0.0, _slant(font)))  # italics: the font's slant would hide the leg's
     lw = (lR - lL) * 1.08 * (1 + (d / (y1 - y0)) ** 2) ** 0.5
     pts = [(lL - d, y0), (lL - d + lw, y0), (lL + lw, top), (lL, top)]
@@ -2093,9 +2180,8 @@ def make_de_pe(font, M):        # Д  ← П on a base bar with two feet
     body = _cut(p, "y", y0 + bt, True)
     ext = s * 0.7
     bl, br = x0 - ext, x1 + ext
-    base = [_rectp(bl, y0, br, y0 + bt, M["sign"])]
-    fs = s * 1.0
-    feet = [_rectp(bl, y0 - M["desc"], bl + fs, y0, M["sign"]), _rectp(br - fs, y0 - M["desc"], br, y0, M["sign"])]
+    base = _part_hbar(font, M, bl, br, y0, "top")  # T's top bar, stretched
+    feet = _part_feet(font, M, bl, br, y0)  # feet of H's leg
     return _tx(body + base + feet, (1, 0, 0, 1, ext, 0)), int(w + 2 * ext)
 
 def make_el_yt(font, M):        # Л  ← lower part of Y as the leg + T without the right half of its bar
@@ -2164,8 +2250,11 @@ def make_el_yt(font, M):        # Л  ← lower part of Y as the leg + T without
     if hooked:  # keep the hook as drawn; carry its stem straight up to the bar
         leg = _tx(leg, (1, 0, 0, 1, 0, ty0 - ly0))
         lt = ly1 - ly0 + ty0
-        if lt < bar_bot:
-            leg = leg + [_rectp(top[0], lt, top[1], bar_bot, M["sign"])]
+        if lt < bar_bot:  # stretch the straight top of its own stem up to the bar
+            d = min((lt - ty0) * 0.2, sw * 2)
+            low, cap = _cut(leg, "y", lt - d, False), _cut(leg, "y", lt - d, True)
+            k = (bar_bot - (lt - d)) / d
+            leg = low + _tx(cap, (1, 0, 0, k, 0, (lt - d) * (1 - k)))
     else:
         if (lx1 - lx0) > sw * 2.6:
             return None  # an ornate Y: leave Л to the H-based builder
@@ -2472,61 +2561,88 @@ def _piece_rev(pc):
     return out
 
 
-def _union_pieces(pieces, samples=8, max_segs=400):
+def _union_pieces(pieces, samples=8, max_segs=260):
     """Union with safety checks: contours are first given consistent
     directions (outer one way, holes the other), and the result is used only
     if it covers the same area as the input."""
     try:
         P = [pc for pc in pieces if pc and len(pc) >= 2]
-        if len(P) < 2:
+        if len(P) < 2 or sum(len(pc) for pc in P) > max_segs:
             return pieces
         flat = [_flat(pc) for pc in P]
         areas = [_area(f) for f in flat]
         big = max(range(len(P)), key=lambda i: abs(areas[i]))
         sgn = 1 if areas[big] > 0 else -1
         fixed = []
+        def probes(poly, area):  # points just inside poly, off any shared edge
+            n = len(poly)
+            out = []
+            for i in range(0, n, max(1, n // 12)):
+                a, b = poly[i], poly[(i + 1) % n]
+                l = math.hypot(b[0] - a[0], b[1] - a[1])
+                if l < 1e-6:
+                    continue
+                nx, ny = -(b[1] - a[1]) / l, (b[0] - a[0]) / l
+                if area < 0:
+                    nx, ny = -nx, -ny
+                e = min(1.0, l * 0.05)
+                out.append(((a[0] + b[0]) / 2 + nx * e, (a[1] + b[1]) / 2 + ny * e))
+            return out
+        prb = [probes(f, areas[i]) for i, f in enumerate(flat)]
+
+        bbs = [_bbox([f]) for f in flat]
+
+        def contains(j, i):  # most of contour i lies inside contour j
+            a, b = bbs[j], bbs[i]
+            if b[0] < a[0] - 1 or b[1] < a[1] - 1 or b[2] > a[2] + 1 or b[3] > a[3] + 1:
+                return False
+            pts = prb[i]
+            return bool(pts) and sum(1 for q in pts if _pinside(q, flat[j])) > len(pts) * 0.6
         for i, pc in enumerate(P):
-            pt = flat[i][0]
-            depth = sum(1 for j, f in enumerate(flat) if j != i and _pinside(pt, f))
+            depth = sum(1 for j in range(len(flat)) if j != i and abs(areas[j]) > abs(areas[i]) and contains(j, i))
             want = sgn if depth % 2 == 0 else -sgn
             fixed.append(pc if (areas[i] > 0) == (want > 0) else _piece_rev(pc))
-        res = _union_core(fixed, samples, max_segs)
-        if res is fixed:
-            return pieces
-        # same filled area? compare both on a grid, row by row
+        # the reference is what the parts look like as drawn (nonzero fill)
         bx0, by0, bx1, by1 = _bbox(flat)
-        fa = [_flat(pc) for pc in fixed]
-        fr = [_flat(pc) for pc in res]
         n = 48
         xs = [bx0 + (bx1 - bx0) * (gx + 0.5) / n for gx in range(n)]
+        ys = [by0 + (by1 - by0) * (gy + 0.5) / n for gy in range(n)]
 
         def row(polys, y):
             cr = []
             for r in polys:
                 m = len(r)
-                for i in range(m):
-                    ax, ay = r[i]
-                    bx, by = r[(i + 1) % m]
+                for q in range(m):
+                    ax, ay = r[q]
+                    bx, by = r[(q + 1) % m]
                     if (ay <= y) != (by <= y):
                         cr.append((ax + (y - ay) * (bx - ax) / (by - ay), 1 if by > ay else -1))
             cr.sort()
-            out, w, k = [], 0, 0
+            out, w, kk = [], 0, 0
             for x in xs:
-                while k < len(cr) and cr[k][0] < x:
-                    w += cr[k][1]
-                    k += 1
+                while kk < len(cr) and cr[kk][0] < x:
+                    w += cr[kk][1]
+                    kk += 1
                 out.append(w != 0)
             return out
 
-        diff = tot = 0
-        for gy in range(n):
-            y = by0 + (by1 - by0) * (gy + 0.5) / n
-            ra, rb = row(fa, y), row(fr, y)
-            tot += sum(ra)
-            diff += sum(1 for a, b in zip(ra, rb) if a != b)
-        if tot and diff / tot > 0.02:
-            return pieces
-        return res
+        ref = [row(flat, y) for y in ys]
+        tot = sum(sum(r) for r in ref)
+
+        def same(cand):
+            if cand is None:
+                return False
+            fc = [_flat(pc) for pc in cand]
+            diff = sum(sum(1 for a, b in zip(ra, row(fc, y)) if a != b) for ra, y in zip(ref, ys))
+            return tot and diff / tot <= 0.02
+
+        for trial in (fixed, P):
+            res = _union_core(trial, samples, max_segs)
+            if res is trial:
+                return pieces  # nothing overlaps
+            if same(res):
+                return res
+        return pieces  # merging didn't reproduce the drawing: keep the parts
     except Exception:
         return pieces
 
@@ -2545,6 +2661,27 @@ def _windn(p, polys):
             elif by <= py and (bx - ax) * (py - ay) - (px - ax) * (by - ay) < 0:
                 w -= 1
     return w
+
+
+def _interior_point(poly, area):
+    """A point just inside a contour (its first point may lie on another
+    contour's edge, which makes inside tests unreliable)."""
+    n = len(poly)
+    best, bl = 0, -1.0
+    for i in range(n):
+        a, b = poly[i], poly[(i + 1) % n]
+        l = math.hypot(b[0] - a[0], b[1] - a[1])
+        if l > bl:
+            best, bl = i, l
+    a, b = poly[best], poly[(best + 1) % n]
+    if bl <= 0:
+        return a
+    mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
+    nx, ny = -(b[1] - a[1]) / bl, (b[0] - a[0]) / bl  # left of the edge
+    if area < 0:
+        nx, ny = -nx, -ny
+    e = min(1.0, bl * 0.01)
+    return (mx + nx * e, my + ny * e)
 
 
 def _pinside(pt, poly):
@@ -3437,21 +3574,21 @@ def font_info(data):
   // ----- "how was this letter made?" -----
   const RECIPES = {
     'Ч': [['H'], 'H үсгийн зүүн доод хөлийг хасаж угсарсан.'],
-    'Ш': [['U'], 'U үсгийг голоор нь хувааж, хооронд нь иш нэмж угсарсан.'],
-    'Щ': [['U'], 'Ш-ийн адилаар угсраад, баруун доод буланд сүүл нэмсэн.'],
-    'Ц': [['U'], 'U үсгийн баруун доод буланд сүүл нэмж угсарсан.'],
+    'Ш': [['U', 'H'], 'U-г голоор нь хувааж, завсрыг U-гийн өөрийн ёроолоор холбоод, дунд нь H-ийн хөлийн дээд хэсгийг иш болгосон.'],
+    'Щ': [['U', 'H'], 'Ш-ийн адилаар угсраад, баруун доод буланд H-ийн хөлийн үзүүрийг сүүл болгож залгасан.'],
+    'Ц': [['U', 'H'], 'U үсгийн баруун доод буланд H-ийн хөлийн үзүүрийг сүүл болгож залгасан.'],
     'Ж': [['K', 'H'], 'K үсгийн гарыг толин тусгалаар хоёр тал руу нь тавьж, дунд нь иш нэмсэн.'],
-    'Ф': [['O'], 'O үсгийг голоор нь хувааж, хооронд нь иш нэмсэн.'],
-    'Ю': [['H', 'O'], 'H-ийн иш, богино хөндлөн зураас, O үсгийг залгасан.'],
-    'Д': [['H'], 'H-ийн иш болон дээд зураасаар П үүсгээд, доор нь суурь зураас, хоёр хөл нэмсэн.'],
+    'Ф': [['O', 'H'], 'O үсгийг голоор нь хувааж, хооронд нь H-ийн хөлийг иш болгон сунгаж тавьсан.'],
+    'Ю': [['H', 'O'], 'H-ийн иш, H-ийн хөндлөн зураас, O үсгийг залгасан.'],
+    'Д': [['H', 'T'], 'H-ийн хөлөөр П үүсгэж, доор нь T-гийн дээд зураасыг сунгаж суурь болгоод, H-ийн хөлийн үзүүрээр хоёр хөл хийсэн.'],
     'Л': [['Y', 'T'], 'Y-гийн дээд гарыг тасдаж доод ишийг нь зүүн хөл болгоод, баруун талын зураасыг нь тасалсан T-тэй залгасан.'],
     'Б': [['P', 'E'], 'P-г урвуулж Ь болгоод, дээр нь E үсгийн дээд гарыг нэмсэн.'],
     'Ъ': [['T', 'P'], 'T үсгийн зүүн гарыг урвуулсан P (Ь)-д залгасан.'],
-    'Э': [['C'], 'C үсгийг толин тусгал болгож, дунд нь хөндлөн зураас нэмсэн.'],
+    'Э': [['C', 'H'], 'C үсгийг толин тусгал болгож, H-ийн хөндлөн зураасыг дунд нь тавьсан.'],
     'Ё': [['E'], 'E үсгийн дээр хоёр цэг нэмсэн.'],
     'У': [['V'], 'V үсгийг дээд хэсэгт нь багтааж, баруун гарыг нь доош суурь шугам хүртэл үргэлжлүүлсэн.'],
     'Й': [['N'], 'N-ийг толин тусгал болгож (И), дээр нь тэмдэг нэмсэн.'],
-    'П': [['H'], 'H үсгийн хоёр ишийг аваад, хөндлөн зураасыг нь дээр шилжүүлсэн.'],
+    'П': [['H', 'T'], 'H үсгийн хоёр хөл дээр T-гийн дээд зураасыг сунгаж тавьсан.'],
     'Ы': [['P', 'H'], 'Урвуулсан P (Ь)-ийн хажууд H-ийн ишийг залгасан.'],
     'Ө': [['O'], 'O үсгийн дотор хөндлөн зураас нэмсэн.'],
   };
