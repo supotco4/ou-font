@@ -1508,12 +1508,14 @@ def _part_hbar(font, M, x0, x1, yb, kind="top", ytop=None):
         if T:
             tx0, ty0, tx1, ty1 = _bboxP(T)
             # the bar: rows from the top that are mostly ink across the width
-            fill = lambda y: sum(r[1] - r[0] for r in _runs(_hitsP(T, "y", y)))
+            # a bar row is one unbroken run across most of the width (a stub
+            # hanging from the bar, beside the stem, breaks it)
+            fill = lambda y: max((r[1] - r[0] for r in _runs(_hitsP(T, "y", y))), default=0)
             W = tx1 - tx0
             bar_bot = None
             for k in range(1, 80):
                 y = ty1 - (ty1 - ty0) * k / 80
-                if fill(y) < W * 0.6:
+                if fill(y) < W * 0.8:
                     bar_bot = y + (ty1 - ty0) / 160
                     break
             if bar_bot is not None and ty1 - bar_bot < (ty1 - ty0) * 0.4:
