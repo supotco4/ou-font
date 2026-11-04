@@ -2223,6 +2223,242 @@ CONSTRUCT = {
 }
 
 
+# ---------- removing overlaps (union), keeping the original curves ----------
+def _lerp(p, q, t):
+    return (p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t)
+
+
+def _seval(sg, t):
+    if len(sg) == 2:
+        return _lerp(sg[0], sg[1], t)
+    a, b, c = _lerp(sg[0], sg[1], t), _lerp(sg[1], sg[2], t), _lerp(sg[2], sg[3], t)
+    d, e = _lerp(a, b, t), _lerp(b, c, t)
+    return _lerp(d, e, t)
+
+
+def _ssplit(sg, t):
+    if len(sg) == 2:
+        m = _lerp(sg[0], sg[1], t)
+        return (sg[0], m), (m, sg[1])
+    a, b, c = _lerp(sg[0], sg[1], t), _lerp(sg[1], sg[2], t), _lerp(sg[2], sg[3], t)
+    d, e = _lerp(a, b, t), _lerp(b, c, t)
+    m = _lerp(d, e, t)
+    return (sg[0], a, d, m), (m, e, c, sg[3])
+
+
+def _ssub(sg, t0, t1):
+    rev = t0 > t1
+    if rev:
+        t0, t1 = t1, t0
+    r = sg
+    if t1 < 1 - 1e-9:
+        r = _ssplit(r, t1)[0]
+    if t0 > 1e-9:
+        r = _ssplit(r, t0 / t1)[1]
+    return tuple(reversed(r)) if rev else r
+
+
+def _union_pieces(pieces, samples=8, max_segs=400):
+    """Merge overlapping contours into one outline (nonzero union). Returns
+    new pieces, or the input unchanged when that isn't needed or possible."""
+    segs = []
+    for ci, pc in enumerate(pieces):
+        for si, sg in enumerate(pc or []):
+            segs.append((ci, si, (sg[1], sg[2]) if sg[0] == "l" else tuple(sg[1:5])))
+    if len(pieces) < 2 or len(segs) > max_segs:
+        return pieces
+    edges, rings = [], {}
+    for ci, si, sg in segs:
+        n = 1 if len(sg) == 2 else samples
+        for k in range(n):
+            t0, t1 = k / n, (k + 1) / n
+            a = sg[0] if k == 0 else _seval(sg, t0)
+            b = sg[-1] if k == n - 1 else _seval(sg, t1)
+            if abs(b[0] - a[0]) + abs(b[1] - a[1]) < 1e-7:
+                continue
+            edges.append([a, b, ci, si, sg, t0, t1])
+            rings.setdefault(ci, []).append(a)
+    R = [r for r in rings.values() if len(r) > 2]
+    # winding queries go through horizontal bands so each looks at few edges
+    redges = []
+    for r in R:
+        n = len(r)
+        for i in range(n):
+            redges.append((r[i][0], r[i][1], r[(i + 1) % n][0], r[(i + 1) % n][1]))
+    ylo = min(min(e[1], e[3]) for e in redges)
+    yhi = max(max(e[1], e[3]) for e in redges)
+    NB = 64
+    bh = (yhi - ylo) / NB or 1.0
+    bands = [[] for _ in range(NB)]
+    for e in redges:
+        b0 = max(0, min(NB - 1, int((min(e[1], e[3]) - ylo) / bh)))
+        b1 = max(0, min(NB - 1, int((max(e[1], e[3]) - ylo) / bh)))
+        for b in range(b0, b1 + 1):
+            bands[b].append(e)
+
+    def wind(p):
+        w = 0
+        px, py = p
+        if py < ylo or py > yhi:
+            return 0
+        for ax, ay, bx, by in bands[max(0, min(NB - 1, int((py - ylo) / bh)))]:
+            if ay <= py:
+                if by > py and (bx - ax) * (py - ay) - (px - ax) * (by - ay) > 0:
+                    w += 1
+            elif by <= py and (bx - ax) * (py - ay) - (px - ax) * (by - ay) < 0:
+                w -= 1
+        return w
+
+    # any overlap at all? an edge with filled area on both sides lies inside
+    # the union; touching shapes have none of those
+    scale = max(1.0, max(max(abs(e[0][0]), abs(e[0][1])) for e in edges))
+    eps = max(1e-3, scale * 2e-5)
+
+    def interior(e):
+        dx, dy = e[1][0] - e[0][0], e[1][1] - e[0][1]
+        l = math.hypot(dx, dy)
+        mx, my = (e[0][0] + e[1][0]) / 2, (e[0][1] + e[1][1]) / 2
+        nx, ny = -dy / l * eps, dx / l * eps
+        return wind((mx + nx, my + ny)) != 0 and wind((mx - nx, my - ny)) != 0
+
+    if not any(interior(e) for e in edges):
+        return pieces
+    # split edges where they cross or overlap
+    E = len(edges)
+    bb = [(min(e[0][0], e[1][0]), min(e[0][1], e[1][1]), max(e[0][0], e[1][0]), max(e[0][1], e[1][1])) for e in edges]
+    order = sorted(range(E), key=lambda i: bb[i][0])
+    cuts = [[] for _ in range(E)]
+    for oi in range(E):
+        i = order[oi]
+        Ai = bb[i]
+        for oj in range(oi + 1, E):
+            j = order[oj]
+            Bj = bb[j]
+            if Bj[0] > Ai[2] + 1e-6:
+                break
+            if Bj[3] < Ai[1] - 1e-6 or Ai[3] < Bj[1] - 1e-6:
+                continue
+            e, f = edges[i], edges[j]
+            rx, ry = e[1][0] - e[0][0], e[1][1] - e[0][1]
+            sx, sy = f[1][0] - f[0][0], f[1][1] - f[0][1]
+            den = rx * sy - ry * sx
+            qx, qy = f[0][0] - e[0][0], f[0][1] - e[0][1]
+            lr, ls = math.hypot(rx, ry), math.hypot(sx, sy)
+            if abs(den) < 1e-9 * lr * ls:
+                if abs(qx * ry - qy * rx) > 1e-6 * lr:
+                    continue
+                for pnt in (f[0], f[1]):
+                    u = ((pnt[0] - e[0][0]) * rx + (pnt[1] - e[0][1]) * ry) / (lr * lr)
+                    if 1e-7 < u < 1 - 1e-7:
+                        cuts[i].append((u, pnt))
+                for pnt in (e[0], e[1]):
+                    u = ((pnt[0] - f[0][0]) * sx + (pnt[1] - f[0][1]) * sy) / (ls * ls)
+                    if 1e-7 < u < 1 - 1e-7:
+                        cuts[j].append((u, pnt))
+                continue
+            t = (qx * sy - qy * sx) / den
+            u = (qx * ry - qy * rx) / den
+            if t < -1e-9 or t > 1 + 1e-9 or u < -1e-9 or u > 1 + 1e-9:
+                continue
+            if t <= 1e-9:
+                P = e[0]
+            elif t >= 1 - 1e-9:
+                P = e[1]
+            elif u <= 1e-9:
+                P = f[0]
+            elif u >= 1 - 1e-9:
+                P = f[1]
+            else:
+                P = (e[0][0] + rx * t, e[0][1] + ry * t)
+            if 1e-9 < t < 1 - 1e-9:
+                cuts[i].append((t, P))
+            if 1e-9 < u < 1 - 1e-9:
+                cuts[j].append((u, P))
+    split = []
+    for i, e in enumerate(edges):
+        pa, ua = e[0], 0.0
+        for u, pnt in sorted(cuts[i], key=lambda c: c[0]) + [(1.0, e[1])]:
+            if u - ua < 1e-9:
+                continue
+            split.append([pa, pnt, e[2], e[3], e[4], e[5] + (e[6] - e[5]) * ua, e[5] + (e[6] - e[5]) * u])
+            pa, ua = pnt, u
+    key = lambda q: (round(q[0] * 1e4), round(q[1] * 1e4))
+    kept, seen = [], set()
+    for e in split:
+        dx, dy = e[1][0] - e[0][0], e[1][1] - e[0][1]
+        l = math.hypot(dx, dy)
+        if l < 1e-9:
+            continue
+        mx, my = (e[0][0] + e[1][0]) / 2, (e[0][1] + e[1][1]) / 2
+        nx, ny = -dy / l * eps, dx / l * eps
+        il, ir = wind((mx + nx, my + ny)) != 0, wind((mx - nx, my - ny)) != 0
+        if il == ir:
+            continue
+        if not il:
+            e = [e[1], e[0], e[2], e[3], e[4], e[6], e[5]]
+        k = (key(e[0]), key(e[1]))
+        if k in seen:
+            continue
+        seen.add(k)
+        kept.append(e)
+    starts = {}
+    for i, e in enumerate(kept):
+        starts.setdefault(key(e[0]), []).append(i)
+    used = [False] * len(kept)
+    out_rings = []
+    for st in range(len(kept)):
+        if used[st]:
+            continue
+        ring, i, guard = [], st, 0
+        while i is not None and not used[i] and guard < 100000:
+            guard += 1
+            used[i] = True
+            ring.append(kept[i])
+            cand = [j for j in starts.get(key(kept[i][1]), []) if not used[j]]
+            if not cand:
+                break
+            if len(cand) == 1:
+                i = cand[0]
+                continue
+            d0 = (kept[i][1][0] - kept[i][0][0], kept[i][1][1] - kept[i][0][1])
+            best, ba = None, None
+            for j in cand:
+                d1 = (kept[j][1][0] - kept[j][0][0], kept[j][1][1] - kept[j][0][1])
+                ang = math.atan2(d0[0] * d1[1] - d0[1] * d1[0], d0[0] * d1[0] + d0[1] * d1[1])
+                if ba is None or -ang < ba:
+                    ba, best = -ang, j
+            i = best
+        if len(ring) > 2 and key(ring[-1][1]) == key(ring[0][0]):
+            out_rings.append(ring)
+    if not out_rings:
+        return pieces
+    result = []
+    for ring in out_rings:
+        runs = []
+        for e in ring:
+            if runs and runs[-1][2] == e[2] and runs[-1][3] == e[3] and abs(runs[-1][6] - e[5]) < 1e-7:
+                runs[-1][1] = e[1]
+                runs[-1][6] = e[6]
+            else:
+                runs.append(list(e))
+        if len(runs) > 1 and runs[0][2] == runs[-1][2] and runs[0][3] == runs[-1][3] and abs(runs[-1][6] - runs[0][5]) < 1e-7:
+            runs[-1][1] = runs[0][1]
+            runs[-1][6] = runs[0][6]
+            runs.pop(0)
+        pc = []
+        for r in runs:
+            a, b, sg = r[0], r[1], r[4]
+            if len(sg) == 2:
+                pc.append(("l", a, b))
+            else:
+                sub = _ssub(sg, r[5], r[6])
+                pc.append(("c", a, sub[1], sub[2], b))
+        pc = [sg for sg in pc if abs(sg[-1][0] - sg[1][0]) + abs(sg[-1][1] - sg[1][1]) > 1e-6 or sg[0] == "c"]
+        if len(pc) >= 2:
+            result.append(pc)
+    return result or pieces
+
+
 def construct(font, cp, pen):
     """Draw a constructed letter into pen; returns its advance width or None."""
     fn = CONSTRUCT.get(cp)
@@ -2236,6 +2472,10 @@ def construct(font, cp, pen):
     if not r:
         return None
     pieces, w = r
+    try:  # one clean outline: overlapping parts merged
+        pieces = _union_pieces(pieces)
+    except Exception:
+        pass
     sl = _slant(font)
     out = TransformPen(pen, (1, 0, sl, 1, -sl * _skew_center(font), 0)) if sl else pen
     # monospaced fonts keep every advance equal: squeeze to the common width
