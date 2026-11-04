@@ -385,6 +385,8 @@
       <div class="seg">
         <button type="button" id="tCurve" disabled title="Сонгосон цэгийн дараах шулууныг муруй болгох">⌒ Муруй</button>
         <button type="button" id="tDup" disabled title="Хувилах (Ctrl+D)">⧉ Хувилах</button>
+        <button type="button" id="tUnite" disabled title="Нэгтгэх: сонгосон дүрсүүдийг нэг дүрс болгоно. Ганц дүрс сонгосон бол давхцсан бусад дүрстэй нь нэгтгэнэ.">⊕ Нэгтгэх</button>
+        <button type="button" id="tSub" disabled title="Хасах: хамгийн сүүлд зурсан сонгосон дүрсийг бусад дүрсээс хасна.">⊖ Хасах</button>
         <button type="button" id="tDel" disabled title="Устгах (Delete)">✕ Устгах</button>
       </div>
       <span class="gap"></span>
@@ -420,6 +422,8 @@
         <span>Ctrl+C · Ctrl+V · Ctrl+D</span><i>хуулах · буулгах (өөр үсэгт ч) · хувилах</i>
         <span>Ctrl+Z · Ctrl+Shift+Z</span><i>буцаах · дахин хийх</i>
         <span>Delete</span><i>устгах</i>
+        <span>⊕ Нэгтгэх</span><i>сонгосон дүрсүүдийг нэг дүрс болгох</i>
+        <span>⊖ Хасах</span><i>сүүлд зурсан дүрсийг бусдаас хасах (жишээ нь тэгш өнцөгт зураад хас)</i>
         <span>+ · − · 0</span><i>томруулах · жижигрүүлэх · бүтэн харах</i>
       </div>
     </div>
@@ -3155,6 +3159,219 @@ def font_info(data):
     document.querySelectorAll('.tile').forEach(t => t.classList.toggle('edited', !!ae[t.querySelector('.g').textContent.codePointAt(0)]));
   }
 
+  // ----- boolean operations on contours (keeps the original curves) -----
+  // contour = [[x, y, 'on'|'q'|'c'], ...]. Curves are flattened only to find
+  // where the outlines cross; the result is rebuilt from pieces of the original
+  // segments, so curves stay curves.
+  const BOOL = (() => {
+    const EPS = 1e-9;
+    function segsOf(c) { // [[i0, offs[], i1]]
+      const n = c.length, out = [], ons = [];
+      c.forEach((p, i) => { if (p[2] === 'on') ons.push(i); });
+      for (let k = 0; k < ons.length; k++) {
+        const a = ons[k], b = ons[(k + 1) % ons.length], offs = [];
+        for (let j = (a + 1) % n; j !== b; j = (j + 1) % n) offs.push(j);
+        out.push([a, offs, b]);
+      }
+      return out;
+    }
+    // normalise a segment to control points: line [P0,P1], quad [P0,Q,P1], cubic [P0,C1,C2,P1]
+    function segPts(c, [a, offs, b]) {
+      const P = i => [c[i][0], c[i][1]];
+      if (!offs.length) return [P(a), P(b)];
+      if (c[offs[0]][2] === 'c' && offs.length >= 2) return [P(a), P(offs[0]), P(offs[1]), P(b)];
+      if (offs.length === 1) return [P(a), P(offs[0]), P(b)];
+      return null; // several quadratic off-curves: split first (see explode)
+    }
+    function explode(c) { // list of control-point arrays, one per segment
+      const out = [];
+      segsOf(c).forEach(s => {
+        const pts = segPts(c, s);
+        if (pts) { out.push(pts); return; }
+        const [a, offs, b] = s, P = i => [c[i][0], c[i][1]];
+        let prev = P(a);
+        for (let j = 0; j < offs.length; j++) {
+          const q = P(offs[j]), nx = j + 1 < offs.length ? P(offs[j + 1]) : null;
+          const end = nx ? [(q[0] + nx[0]) / 2, (q[1] + nx[1]) / 2] : P(b);
+          out.push([prev, q, end]); prev = end;
+        }
+      });
+      return out;
+    }
+    const lerp = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+    function evalSeg(s, t) {
+      if (s.length === 2) return lerp(s[0], s[1], t);
+      if (s.length === 3) return lerp(lerp(s[0], s[1], t), lerp(s[1], s[2], t), t);
+      const a = lerp(s[0], s[1], t), b = lerp(s[1], s[2], t), c = lerp(s[2], s[3], t);
+      return lerp(lerp(a, b, t), lerp(b, c, t), t);
+    }
+    function splitSeg(s, t) { // [left, right]
+      if (s.length === 2) { const m = lerp(s[0], s[1], t); return [[s[0], m], [m, s[1]]]; }
+      if (s.length === 3) { const a = lerp(s[0], s[1], t), b = lerp(s[1], s[2], t), m = lerp(a, b, t); return [[s[0], a, m], [m, b, s[2]]]; }
+      const a = lerp(s[0], s[1], t), b = lerp(s[1], s[2], t), c = lerp(s[2], s[3], t), d = lerp(a, b, t), e = lerp(b, c, t), m = lerp(d, e, t);
+      return [[s[0], a, d, m], [m, e, c, s[3]]];
+    }
+    function subSeg(s, t0, t1) { // piece of s between t0 and t1 (t0 may exceed t1)
+      const rev = t0 > t1; if (rev) [t0, t1] = [t1, t0];
+      let r = s;
+      if (t1 < 1 - EPS) r = splitSeg(r, t1)[0];
+      if (t0 > EPS) r = splitSeg(r, t0 / t1)[1];
+      return rev ? r.slice().reverse() : r;
+    }
+    // ---- flatten operands into tagged edges ----
+    function flatten(contours, op) {
+      const rings = [], edges = [];
+      contours.forEach((c, ci) => {
+        const ring = [];
+        explode(c).forEach((s, si) => {
+          const n = s.length === 2 ? 1 : 24;
+          for (let k = 0; k < n; k++) {
+            const t0 = k / n, t1 = (k + 1) / n;
+            const a = k === 0 ? s[0] : evalSeg(s, t0), b = k === n - 1 ? s[s.length - 1] : evalSeg(s, t1);
+            if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 1e-7) continue;
+            edges.push({ a, b, op, ci, si, seg: s, t0, t1 });
+            ring.push(a);
+          }
+        });
+        if (ring.length > 2) rings.push(ring);
+      });
+      return { rings, edges };
+    }
+    function wind(rings, p) { // nonzero winding number of p
+      let w = 0;
+      for (const r of rings) for (let i = 0, n = r.length; i < n; i++) {
+        const a = r[i], b = r[(i + 1) % n];
+        if (a[1] <= p[1]) { if (b[1] > p[1] && (b[0] - a[0]) * (p[1] - a[1]) - (p[0] - a[0]) * (b[1] - a[1]) > 0) w++; }
+        else if (b[1] <= p[1] && (b[0] - a[0]) * (p[1] - a[1]) - (p[0] - a[0]) * (b[1] - a[1]) < 0) w--;
+      }
+      return w;
+    }
+    // split every edge where it meets another (including collinear overlaps)
+    function splitAll(edges) {
+      const cuts = edges.map(() => []);
+      const bb = edges.map(e => [Math.min(e.a[0], e.b[0]), Math.min(e.a[1], e.b[1]), Math.max(e.a[0], e.b[0]), Math.max(e.a[1], e.b[1])]);
+      for (let i = 0; i < edges.length; i++) for (let j = i + 1; j < edges.length; j++) {
+        const A = bb[i], B = bb[j];
+        if (A[2] < B[0] - 1e-6 || B[2] < A[0] - 1e-6 || A[3] < B[1] - 1e-6 || B[3] < A[1] - 1e-6) continue;
+        const e = edges[i], f = edges[j];
+        const r = [e.b[0] - e.a[0], e.b[1] - e.a[1]], s = [f.b[0] - f.a[0], f.b[1] - f.a[1]];
+        const den = r[0] * s[1] - r[1] * s[0], qp = [f.a[0] - e.a[0], f.a[1] - e.a[1]];
+        const lr = Math.hypot(r[0], r[1]), ls = Math.hypot(s[0], s[1]);
+        if (Math.abs(den) < 1e-9 * lr * ls) { // parallel
+          if (Math.abs(qp[0] * r[1] - qp[1] * r[0]) > 1e-6 * lr) continue; // not collinear
+          const proj = (p, o, d, l2) => ((p[0] - o[0]) * d[0] + (p[1] - o[1]) * d[1]) / l2;
+          const lr2 = lr * lr, ls2 = ls * ls;
+          [[f.a, i], [f.b, i]].forEach(([p]) => { const u = proj(p, e.a, r, lr2); if (u > 1e-7 && u < 1 - 1e-7) cuts[i].push([u, p]); });
+          [[e.a], [e.b]].forEach(([p]) => { const u = proj(p, f.a, s, ls2); if (u > 1e-7 && u < 1 - 1e-7) cuts[j].push([u, p]); });
+          continue;
+        }
+        const t = (qp[0] * s[1] - qp[1] * s[0]) / den, u = (qp[0] * r[1] - qp[1] * r[0]) / den;
+        if (t < -1e-9 || t > 1 + 1e-9 || u < -1e-9 || u > 1 + 1e-9) continue;
+        let P;
+        if (t <= 1e-9) P = e.a; else if (t >= 1 - 1e-9) P = e.b; else if (u <= 1e-9) P = f.a; else if (u >= 1 - 1e-9) P = f.b;
+        else P = [e.a[0] + r[0] * t, e.a[1] + r[1] * t];
+        if (t > 1e-9 && t < 1 - 1e-9) cuts[i].push([t, P]);
+        if (u > 1e-9 && u < 1 - 1e-9) cuts[j].push([u, P]);
+      }
+      const out = [];
+      edges.forEach((e, i) => {
+        const cs = cuts[i].sort((x, y) => x[0] - y[0]);
+        let pa = e.a, ua = 0;
+        for (const [u, p] of cs.concat([[1, e.b]])) {
+          if (u - ua < 1e-9) continue;
+          out.push({ ...e, a: pa, b: p, t0: e.t0 + (e.t1 - e.t0) * ua, t1: e.t0 + (e.t1 - e.t0) * u });
+          pa = p; ua = u;
+        }
+      });
+      return out;
+    }
+    const key = p => Math.round(p[0] * 1e4) + ',' + Math.round(p[1] * 1e4);
+    // inside(wa, wb) decides the result region from the two winding numbers
+    function run(A, B, inside) {
+      const fa = flatten(A, 'A'), fb = flatten(B, 'B');
+      const edges = splitAll(fa.edges.concat(fb.edges));
+      const kept = [], seen = new Set();
+      let scale = 1;
+      edges.forEach(e => { scale = Math.max(scale, Math.abs(e.a[0]), Math.abs(e.a[1])); });
+      const eps = Math.max(1e-3, scale * 2e-5);
+      for (const e of edges) {
+        const d = [e.b[0] - e.a[0], e.b[1] - e.a[1]], l = Math.hypot(d[0], d[1]);
+        if (l < 1e-9) continue;
+        const m = [(e.a[0] + e.b[0]) / 2, (e.a[1] + e.b[1]) / 2], nrm = [-d[1] / l * eps, d[0] / l * eps];
+        const pl = [m[0] + nrm[0], m[1] + nrm[1]], pr = [m[0] - nrm[0], m[1] - nrm[1]];
+        const il = inside(wind(fa.rings, pl), wind(fb.rings, pl)), ir = inside(wind(fa.rings, pr), wind(fb.rings, pr));
+        if (il === ir) continue;
+        const ed = il ? e : { ...e, a: e.b, b: e.a, t0: e.t1, t1: e.t0 };
+        const k = key(ed.a) + '>' + key(ed.b);
+        if (seen.has(k)) continue; // the same boundary piece coming from both operands
+        seen.add(k); kept.push(ed);
+      }
+      // link edges head to tail into rings
+      const from = new Map();
+      kept.forEach((e, i) => { const k = key(e.a); if (!from.has(k)) from.set(k, []); from.get(k).push(i); });
+      const used = new Uint8Array(kept.length), rings = [];
+      for (let s = 0; s < kept.length; s++) {
+        if (used[s]) continue;
+        const ring = []; let i = s, guard = 0;
+        while (i != null && !used[i] && guard++ < 100000) {
+          used[i] = 1; ring.push(kept[i]);
+          const cand = (from.get(key(kept[i].b)) || []).filter(j => !used[j]);
+          if (!cand.length) break;
+          if (cand.length === 1) { i = cand[0]; continue; }
+          // several ways on: take the sharpest left turn so rings don't cross
+          const d0 = [kept[i].b[0] - kept[i].a[0], kept[i].b[1] - kept[i].a[1]];
+          let best = null, ba = Infinity;
+          cand.forEach(j => {
+            const d1 = [kept[j].b[0] - kept[j].a[0], kept[j].b[1] - kept[j].a[1]];
+            const ang = Math.atan2(d0[0] * d1[1] - d0[1] * d1[0], d0[0] * d1[0] + d0[1] * d1[1]);
+            const v = -ang; if (v < ba) { ba = v; best = j; }
+          });
+          i = best;
+        }
+        if (ring.length > 2 && key(ring[ring.length - 1].b) === key(ring[0].a)) rings.push(ring);
+      }
+      return rings.map(rebuild).filter(c => c.length > 2);
+    }
+    // turn a ring of tagged edges back into an outline with the original curves
+    function rebuild(ring) {
+      const runs = [];
+      for (const e of ring) {
+        const last = runs[runs.length - 1];
+        if (last && last.op === e.op && last.ci === e.ci && last.si === e.si && Math.abs(last.t1 - e.t0) < 1e-7) { last.t1 = e.t1; last.b = e.b; }
+        else runs.push({ op: e.op, ci: e.ci, si: e.si, seg: e.seg, t0: e.t0, t1: e.t1, a: e.a, b: e.b });
+      }
+      // a run cut by the ring's start point may wrap around: join it
+      if (runs.length > 1) {
+        const f = runs[0], l = runs[runs.length - 1];
+        if (f.op === l.op && f.ci === l.ci && f.si === l.si && Math.abs(l.t1 - f.t0) < 1e-7) { l.t1 = f.t1; l.b = f.b; runs.shift(); }
+      }
+      const R = v => Math.round(v), out = [];
+      for (const r of runs) {
+        const s = r.seg;
+        if (s.length === 2) { out.push([R(r.b[0]), R(r.b[1]), 'on']); continue; }
+        const sub = subSeg(s, r.t0, r.t1), tag = s.length === 3 ? 'q' : 'c';
+        for (let k = 1; k < sub.length - 1; k++) out.push([R(sub[k][0]), R(sub[k][1]), tag]);
+        out.push([R(r.b[0]), R(r.b[1]), 'on']);
+      }
+      // drop repeated points and straight-line points that add nothing
+      const clean = [];
+      out.forEach(p => { const q = clean[clean.length - 1]; if (!q || q[0] !== p[0] || q[1] !== p[1] || q[2] !== p[2]) clean.push(p); });
+      while (clean.length > 1 && clean[0][0] === clean[clean.length - 1][0] && clean[0][1] === clean[clean.length - 1][1] && clean[0][2] === clean[clean.length - 1][2]) clean.pop();
+      for (let pass = 0; pass < 2; pass++) for (let i = clean.length - 1; i >= 0 && clean.length > 3; i--) {
+        const n = clean.length, p = clean[(i - 1 + n) % n], q = clean[i], r = clean[(i + 1) % n];
+        if (p[2] !== 'on' || q[2] !== 'on' || r[2] !== 'on') continue;
+        const cr = (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+        if (Math.abs(cr) <= Math.hypot(r[0] - p[0], r[1] - p[1]) * 0.5) clean.splice(i, 1);
+      }
+      return clean;
+    }
+    return {
+      union: (A, B) => run(A, B, (a, b) => a !== 0 || b !== 0),
+      subtract: (A, B) => run(A, B, (a, b) => a !== 0 && b === 0),
+      intersect: (A, B) => run(A, B, (a, b) => a !== 0 && b !== 0),
+    };
+  })();
+
   // ----- glyph editor -----
   const ALPHA = 'АБВГДЕЁЖЗИЙКЛМНОӨПРСТУҮФХЦЧШЩЪЫЬЭЮЯ';
   const ALL_CPS = [...ALPHA].map(c => c.codePointAt(0)).concat([...ALPHA.toLowerCase()].map(c => c.codePointAt(0)));
@@ -3418,6 +3635,7 @@ def font_info(data):
     else $('edRead').textContent = sel.length ? sel.length + ' цэг сонгосон' : '';
     $('tDel').disabled = !sel.length;
     $('tDup').disabled = !fullC.size;
+    $('tUnite').disabled = $('tSub').disabled = !E.sel.size || w.contours.length < 2;
     $('tCurve').disabled = !(sel.length === 1 && w.contours[sel[0][0]][sel[0][1]][2] === 'on' && lineAfter(sel[0][0], sel[0][1]));
     $('tUndo').disabled = !w.undo.length; $('tRedo').disabled = !w.redo.length;
     const b = $('edLetters').querySelector('[aria-pressed=true]');
@@ -3649,6 +3867,26 @@ def font_info(data):
     fixDirs(); render();
   }
   function duplicate() { const keep = CLIP; if (copySel()) paste(Math.round(M().upm * 0.03)); CLIP = keep; }
+  function boolOp(kind) {
+    const cs = W().contours;
+    let S = fullContours();
+    if (!S.length) S = [...new Set([...E.sel].map(k => unkey(k)[0]))];
+    if (!S.length || cs.length < 2) return;
+    S.sort((a, b) => a - b);
+    let base, cut;
+    if (kind === 'sub') { cut = [S[S.length - 1]]; base = S.length > 1 ? S.slice(0, -1) : cs.map((_, i) => i).filter(i => i !== cut[0]); }
+    else { base = S.length > 1 ? S : cs.map((_, i) => i); cut = []; }
+    const used = new Set(base.concat(cut));
+    const A = base.map(i => cs[i]), B = cut.map(i => cs[i]);
+    let res;
+    try { res = kind === 'sub' ? BOOL.subtract(A, B) : BOOL.union(A, B); } catch (e) { $('edHint').textContent = 'Энэ дүрсүүд дээр хийж чадсангүй.'; return; }
+    push();
+    const keep = cs.filter((_, i) => !used.has(i));
+    W().contours = keep.concat(res);
+    E.sel = new Set(); for (let ci = keep.length; ci < W().contours.length; ci++) selectContour(ci, true);
+    fixDirs(); render();
+    $('edHint').textContent = kind === 'sub' ? 'Хаслаа. Буцаах бол Ctrl+Z.' : 'Нэгтгэлээ. Буцаах бол Ctrl+Z.';
+  }
   function toCurve() {
     const sel = [...E.sel].map(unkey); if (sel.length !== 1) return;
     const [ci, i] = sel[0], c = W().contours[ci], s = segs(c).find(([a, offs]) => a === i && !offs.length);
@@ -3670,6 +3908,8 @@ def font_info(data):
   $('tRect').onclick = () => { setTool('rect'); render(); };
   $('tDel').onclick = del;
   $('tDup').onclick = duplicate;
+  $('tUnite').onclick = () => boolOp('union');
+  $('tSub').onclick = () => boolOp('sub');
   $('tCurve').onclick = toCurve;
   $('tUndo').onclick = undo;
   $('tRedo').onclick = redo;
