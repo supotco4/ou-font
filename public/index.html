@@ -2090,7 +2090,7 @@ def make_de_pe(font, M):        # Д  ← П on a base bar with two feet
     feet = [_rectp(bl, y0 - M["desc"], bl + fs, y0, M["sign"]), _rectp(br - fs, y0 - M["desc"], br, y0, M["sign"])]
     return _tx(body + base + feet, (1, 0, 0, 1, ext, 0)), int(w + 2 * ext)
 
-def make_el_yt(font, M):        # Л  ← T's bar, T's stem moved to the right, Y's right arm as the left leg
+def make_el_yt(font, M):        # Л  ← lower part of Y as the leg + T without the right half of its bar
     T, wt = _load(font, "T")
     Y, wy = _load(font, "Y")
     if not T or not Y:
@@ -2103,12 +2103,10 @@ def make_el_yt(font, M):        # Л  ← T's bar, T's stem moved to the right, 
     if len(hb) < 2 or len(hs) < 2 or (hb[-1] - hb[0]) < (tx1 - tx0) * 0.6:
         return None
     a, b = min(((hs[i], hs[i + 1]) for i in range(0, len(hs) - 1, 2)), key=lambda r: abs((r[0] + r[1]) / 2 - (tx0 + tx1) / 2))
-    bar = _cut(T, "y", bar_bot, True)
-    stem = _cut(_cut(_cut(T, "y", bar_bot, False), "x", a - 0.5, True), "x", b + 0.5, False)
-    if not bar or not stem:
+    right = _cut(T, "x", b, False)  # T with the right half of the bar cut off: ꓶ
+    if not right:
         return None
-    stem = _tx(stem, (1, 0, 0, 1, tx1 - b, 0))  # stand it under the right end of the bar
-    # Y's right arm: the part right of centre above the fork
+    # the leg: Y below its fork (the arms cut off)
     yx0, yy0, yx1, yy1 = _bboxP(Y)
     fork = None
     for k in range(3, 60):
@@ -2118,42 +2116,36 @@ def make_el_yt(font, M):        # Л  ← T's bar, T's stem moved to the right, 
             break
     if fork is None:
         return None
-    cut_y = fork + (yy1 - fork) * 0.2
-    hc = _hitsP(Y, "y", cut_y)
-    if len(hc) < 4:
+    cut_y = fork - (fork - yy0) * 0.08
+    leg = _cut(Y, "y", cut_y, False)
+    if not leg:
         return None
-    mid = (hc[1] + hc[2]) / 2
-    upper = _cut(Y, "y", cut_y, True)
-    arm = _cut(upper, "x", mid, True)
-    left = _cut(upper, "x", mid, False)
-    if not arm:
-        return None
-    # serif faces draw the right arm as a hairline: then mirror the thick left arm
-    ym = cut_y + (yy1 - cut_y) * 0.5
-    hr, hl = _hitsP(arm, "y", ym), _hitsP(left, "y", ym) if left else []
-    if len(hr) >= 2 and len(hl) >= 2 and (hl[1] - hl[0]) > (hr[1] - hr[0]) * 1.25:
-        lx0, _, lx1, _ = _bboxP(left)
-        arm = _tx(left, (-1, 0, 0, 1, lx0 + lx1, 0))
-    ax0, ay0, ax1, ay1 = _bboxP(arm)
-    ky = (bar_bot - ty0) / (ay1 - ay0)
-    arm = _tx(arm, (1, 0, 0, ky, 0, ty0 - ay0 * ky))  # stretch to full leg height
+    lx0, ly0, lx1, ly1 = _bboxP(leg)
     H = bar_bot - ty0
-    top = _hitsP(arm, "y", bar_bot - H * 0.02)
-    low = _hitsP(arm, "y", ty0 + H * 0.02)
-    if len(top) < 2 or len(low) < 2:
+    ky = H / (ly1 - ly0)
+    leg = _tx(leg, (1, 0, 0, ky, 0, ty0 - ly0 * ky))  # stretch up to the bar
+    top = _hitsP(leg, "y", bar_bot - H * 0.03)
+    if len(top) < 2:
         return None
-    run = (top[0] - low[0])
-    want = H * (0.3 + max(0.0, _slant(font)))
-    sh = (want - run) / H  # lean the leg further out without changing its thickness
-    arm = _tx(arm, (1, 0, sh, 1, -sh * bar_bot, 0))
-    top = _hitsP(arm, "y", bar_bot - H * 0.02)
-    arm = _tx(arm, (1, 0, 0, 1, tx0 - top[0], 0))  # its top under the bar's left end
-    pieces = bar + stem + arm
+    sw = top[1] - top[0]
+    mh = _hitsP(leg, "y", ty0 + H * 0.5)
+    lb = _bboxP(leg)
+    # a foot that swings out to the left (a hook) already reads as Л;
+    # a symmetric serif foot does not
+    hooked = len(mh) >= 2 and (mh[0] - lb[0]) > sw * 0.8 and (mh[0] - lb[0]) > (lb[2] - mh[-1]) * 2
+    if not hooked and (lb[2] - lb[0]) > sw * 2.6:
+        return None  # an ornate Y: leave Л to the H-based builder
+    if not hooked:  # a straight stem would make П: lean it out
+        sh = H * (0.3 + max(0.0, _slant(font))) / H
+        leg = _tx(leg, (1, 0, sh, 1, -sh * bar_bot, 0))
+        top = _hitsP(leg, "y", bar_bot - H * 0.03)
+    leg = _tx(leg, (1, 0, 0, 1, tx0 - top[0], 0))  # its top under the bar's left end
+    pieces = leg + right
     px0 = _bboxP(pieces)[0]
     shift = max(0.0, tx0 - px0)
     if shift:
         pieces = _tx(pieces, (1, 0, 0, 1, shift, 0))
-    return pieces, int(wt + shift)
+    return pieces, int(b + shift + (wt - tx1))
 
 
 def make_u(font, M):            # У  ← V pressed into the upper part, right arm runs on to the baseline
@@ -3081,7 +3073,7 @@ def font_info(data):
     'Ф': [['O'], 'O үсгийг голоор нь хувааж, хооронд нь иш нэмсэн.'],
     'Ю': [['H', 'O'], 'H-ийн иш, богино хөндлөн зураас, O үсгийг залгасан.'],
     'Д': [['H'], 'H-ийн иш болон дээд зураасаар П үүсгээд, доор нь суурь зураас, хоёр хөл нэмсэн.'],
-    'Л': [['T', 'Y'], 'T үсгийн дээд зураасыг авч, ишийг нь баруун тал руу шилжүүлээд, Y-гийн гарыг налуу зүүн хөл болгосон.'],
+    'Л': [['Y', 'T'], 'Y-гийн дээд гарыг тасдаж доод ишийг нь зүүн хөл болгоод, баруун талын зураасыг нь тасалсан T-тэй залгасан.'],
     'Б': [['P', 'E'], 'P-г урвуулж Ь болгоод, дээр нь E үсгийн дээд гарыг нэмсэн.'],
     'Ъ': [['T', 'P'], 'T үсгийн зүүн гарыг урвуулсан P (Ь)-д залгасан.'],
     'Э': [['C'], 'C үсгийг толин тусгал болгож, дунд нь хөндлөн зураас нэмсэн.'],
