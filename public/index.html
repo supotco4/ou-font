@@ -3331,6 +3331,14 @@ def _draw_points(pen, contour):
     pen.closePath()
 
 
+def _lower_of(cp):
+    if 0x0410 <= cp <= 0x042F:
+        return cp + 0x20
+    if 0x0400 <= cp <= 0x040F:
+        return cp + 0x50
+    return {0x04E8: 0x04E9, 0x04AE: 0x04AF}.get(cp)
+
+
 def apply_edits(data, edits):
     """edits: {cp: {"width": w, "contours": [...]}} drawn by hand. Each becomes
     a new glyph so that shared Latin glyphs stay as they were."""
@@ -3402,10 +3410,41 @@ def apply_edits(data, edits):
     if "gvar" in font:
         for gname in done:
             font["gvar"].variations[gname] = []
+    # The lowercase of an edited capital follows the edit when the font drew
+    # the two exactly alike (caps fonts), unless it was edited itself.
+    # Latin letters keep their own shape.
+    best = font.getBestCmap() or {}
+    edited_cps = {cp for (cp, *_r) in done.values()}
+    gs0 = TTFont(io.BytesIO(data)).getGlyphSet()
+
+    def _rec(g):
+        try:
+            p = RecordingPen()
+            gs0[g].draw(p)
+            return p.value, gs0[g].width
+        except Exception:
+            return None
+
+    follow = {}
+    for gname, (cp, *_r) in done.items():
+        g0 = best.get(cp)
+        if g0 is None:
+            continue
+        lo = _lower_of(cp)
+        if lo and lo not in edited_cps and lo in best:
+            if best[lo] == g0:
+                follow[lo] = gname
+            else:
+                a = _rec(g0)
+                if a is not None and a == _rec(best[lo]):
+                    follow[lo] = gname
     for t in font["cmap"].tables:
         if t.isUnicode() and t.format in (4, 12, 13):
             for gname, (cp, *_r) in done.items():
                 t.cmap[cp] = gname
+            for ocp, gname in follow.items():
+                if ocp in t.cmap:
+                    t.cmap[ocp] = gname
     for tag in ("hdmx", "LTSH", "VDMX", "DSIG", "HVAR", "VVAR"):
         if tag in font:
             del font[tag]
@@ -4175,6 +4214,11 @@ def font_info(data):
   const key = (c, p) => c + ',' + p;
   const unkey = k => k.split(',').map(Number);
 
+  function upperOf(cp) {
+    if (cp >= 0x0430 && cp <= 0x044F) return cp - 0x20;
+    if (cp >= 0x0450 && cp <= 0x045F) return cp - 0x50;
+    return cp === 0x04E9 ? 0x04E8 : cp === 0x04AF ? 0x04AE : cp;
+  }
   function pyOutline(cp) {
     py.globals.set('bb_js', baseBytes); py.globals.set('cp_js', cp);
     return JSON.parse(py.runPython('json.dumps(mnfont.glyph_outline(bytes(bb_js.to_py()), cp_js))'));
@@ -4197,7 +4241,14 @@ def font_info(data):
     if (E.cp != null && E.tool === 'draw' && E.draft && E.draft.length) closeDraft();
     if (!E.base[cp]) E.base[cp] = pyOutline(cp);
     if (!E.work[cp]) {
-      const src = edits[cp] ? edits[cp] : E.base[cp];
+      // a lowercase drawn exactly like its capital follows the capital's edit
+      let src = edits[cp] ? edits[cp] : E.base[cp];
+      const up = upperOf(cp);
+      if (!edits[cp] && up !== cp && edits[up]) {
+        if (!E.base[up]) E.base[up] = pyOutline(up);
+        const a = E.base[up], b = E.base[cp];
+        if (a && b && a.width === b.width && JSON.stringify(a.contours) === JSON.stringify(b.contours)) src = edits[up];
+      }
       E.work[cp] = { width: src.width, contours: clone(src.contours), touched: false, undo: [], redo: [] };
     }
     E.cp = cp; E.sel = new Set(); E.draft = null; E.view = null; E.hov = null;
