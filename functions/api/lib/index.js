@@ -8,7 +8,8 @@ const MAX = 1900000;
 export async function onRequestGet({ env }) {
   const { results } = await env.DB.prepare(
     `SELECT f.id, f.created_at, f.nickname, f.title, f.note, f.changes, f.size,
-            (SELECT COUNT(*) FROM lib_comments c WHERE c.font_id = f.id AND c.status = 'public') AS comments
+            (SELECT COUNT(*) FROM lib_comments c WHERE c.font_id = f.id AND c.status = 'public' AND COALESCE(c.kind, 'comment') = 'comment') AS comments,
+            (SELECT COUNT(*) FROM lib_comments c WHERE c.font_id = f.id AND c.status = 'public' AND c.kind = 'request') AS requests
        FROM lib_fonts f WHERE f.status = 'public' ORDER BY f.id DESC LIMIT 200`
   ).all();
   return json({ ok: true, items: results || [] });

@@ -1,12 +1,12 @@
 // GET  /api/lib/:id/comments — public comments on a library font
-// POST /api/lib/:id/comments {nickname, message} — links are held back
+// POST /api/lib/:id/comments {nickname, message, kind: 'comment'|'request', letters} — links are held back
 import { json, ipHash } from "../../../_lib/util.js";
 import { LINKY, clean } from "../../../_lib/mod.js";
 
 export async function onRequestGet({ params, env }) {
   const id = parseInt(params.id, 10);
   const { results } = await env.DB.prepare(
-    "SELECT id, created_at, nickname, message FROM lib_comments WHERE font_id = ? AND status = 'public' ORDER BY id ASC LIMIT 200"
+    "SELECT id, created_at, nickname, message, kind, letters FROM lib_comments WHERE font_id = ? AND status = 'public' ORDER BY id ASC LIMIT 200"
   ).bind(id).all();
   return json({ ok: true, items: results || [] });
 }
@@ -18,6 +18,8 @@ export async function onRequestPost({ params, request, env }) {
   if (body.website) return json({ ok: true, held: true }); // honeypot
   const nickname = clean(body.nickname, 40);
   const message = String(body.message || "").trim().slice(0, 1000);
+  const kind = body.kind === "request" ? "request" : "comment";
+  const letters = kind === "request" ? [...String(body.letters || "").replace(/[\s,;]+/g, "")].slice(0, 12).join("") : null;
   if (nickname.length < 2) return json({ ok: false, error: "nickname" }, 400);
   if (message.length < 2) return json({ ok: false, error: "too_short" }, 400);
   const f = await env.DB.prepare("SELECT id FROM lib_fonts WHERE id = ? AND status = 'public'").bind(id).first();
@@ -31,7 +33,7 @@ export async function onRequestPost({ params, request, env }) {
   }
   const status = [nickname, message].some((t) => LINKY.test(t)) ? "held" : "public";
   const res = await env.DB.prepare(
-    "INSERT INTO lib_comments (font_id, nickname, message, ip_hash, status) VALUES (?, ?, ?, ?, ?)"
-  ).bind(id, nickname, message, ih, status).run();
+    "INSERT INTO lib_comments (font_id, nickname, message, ip_hash, status, kind, letters) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  ).bind(id, nickname, message, ih, status, kind, letters).run();
   return json({ ok: true, held: status !== "public", id: res.meta && res.meta.last_row_id });
 }
