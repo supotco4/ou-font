@@ -210,6 +210,17 @@
   .modal{position:fixed;inset:0;background:rgba(10,10,12,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
   .modal[hidden]{display:none}
   .modal .box{background:var(--surface);color:var(--ink);border-radius:24px;max-width:520px;width:100%;padding:26px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .mlist{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+  .mitem{border:1px solid var(--line2);border-radius:18px;padding:14px 16px;background:var(--tile)}
+  .mitem .mh{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .mitem .mh b{font-size:15px}
+  .mitem .mh span{color:var(--faint);font-size:12.5px}
+  .mitem .mh .same{color:var(--accent);font-weight:600;font-size:12px;background:color-mix(in srgb, var(--accent) 12%, transparent);padding:3px 8px;border-radius:99px}
+  .mitem .mp{font-size:30px;line-height:1.2;margin:8px 0 4px;word-break:break-word;min-height:36px}
+  .mitem .mp.loading{color:var(--faint);font:14px Inter,sans-serif}
+  .mitem .mc{font-size:12.5px;color:var(--soft);margin-bottom:10px}
+  .mitem .ma{display:flex;gap:8px;flex-wrap:wrap}
+  .mitem .ma .btn{padding:10px 14px;font-size:13.5px;text-decoration:none}
   #libModal .box{position:relative;overflow:hidden}
   .libdone{position:absolute;inset:0;background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;z-index:2;animation:ldIn .25s ease-out both}
   .libdone[hidden]{display:none}
@@ -432,6 +443,17 @@
       <h4>Баярлалаа!</h4>
       <p id="libDoneText">Таны фонт Фонт санд нэмэгдлээ.</p>
       <div class="ldbar"><i></i></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="matchModal" hidden role="dialog" aria-modal="true" aria-labelledby="matchTitle">
+  <div class="box" style="max-width:540px">
+    <h3 id="matchTitle">Энэ фонт мөн үү?</h3>
+    <p id="matchText">Таны оруулсан фонттой ижил фонт Фонт санд байна. Өмнө нь хэн нэгэн монгол үсэг нэмээд хадгалсан байж магадгүй.</p>
+    <div class="mlist" id="matchList"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px">
+      <button class="btn ghost" type="button" id="matchNo">Үгүй, өөрөө засна</button>
     </div>
   </div>
 </div>
@@ -3506,10 +3528,75 @@ def font_info(data):
     captions();
     renderAlpha();
     regenerate();
-    askAllLetters();
     shared = false;
     shareFont();
+    srcSha = '';
+    const mine = srcBytes;
+    const found = await checkLibrary(mine);
+    if (mine !== srcBytes) return;
+    if (found) showMatches(found); else askAllLetters();
   }
+  // ----- is this font already in the Фонт сан? -----
+  let srcSha = '', matchFocus = null;
+  async function sha256Hex(bytes) {
+    try { const d = await crypto.subtle.digest('SHA-256', bytes); return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join(''); }
+    catch (e) { return ''; }
+  }
+  async function checkLibrary(bytes) {
+    srcSha = await sha256Hex(bytes);
+    const q = new URLSearchParams({ sha: srcSha, family: info.family || '', style: info.style || '' });
+    try {
+      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 4000);
+      const r = await fetch('/api/lib/match?' + q, { signal: ctl.signal }); clearTimeout(tm);
+      const j = await r.json();
+      return j && j.items && j.items.length ? j.items : null;
+    } catch (e) { return null; }
+  }
+  function showMatches(items) {
+    const list = $('matchList'); list.innerHTML = '';
+    const exact = items.some(it => it.same_file);
+    $('matchTitle').textContent = 'Энэ фонт мөн үү?';
+    $('matchText').textContent = exact
+      ? 'Яг энэ фонтыг өмнө нь хэн нэгэн засаад Фонт санд хадгалсан байна. Шууд татаж авч болно.'
+      : 'Фонт санд ижил нэртэй фонт байна. Хэрэв таны фонт мөн бол засварласан хувилбарыг нь шууд татаж болно.';
+    items.slice(0, 3).forEach(it => {
+      let ch = {}; try { ch = JSON.parse(it.changes || '{}'); } catch (e) {}
+      const d = document.createElement('div'); d.className = 'mitem';
+      const h = document.createElement('div'); h.className = 'mh';
+      const b = document.createElement('b'); b.textContent = it.title || 'Нэргүй фонт';
+      const by = document.createElement('span'); by.textContent = (it.nickname || 'Нэргүй') + ' · ' + String(it.created_at || '').slice(0, 10);
+      h.append(b, by);
+      if (it.same_file) { const sm = document.createElement('span'); sm.className = 'same'; sm.textContent = 'Яг ижил файл'; h.appendChild(sm); }
+      const p = document.createElement('div'); p.className = 'mp loading'; p.textContent = 'Ачаалж байна…';
+      const c = document.createElement('div'); c.className = 'mc';
+      c.textContent = (ch.mode === 'all' ? 'Бүх үсэг' : 'Зөвхөн Ө Ү') + (ch.added ? ' · Нэмсэн: ' + ch.added : '') + (ch.edited ? ' · Гараар зассан: ' + ch.edited : '');
+      const a = document.createElement('div'); a.className = 'ma';
+      const yes = document.createElement('a'); yes.className = 'btn primary'; yes.textContent = 'Тийм, энэ — татах';
+      yes.href = '/api/lib/' + it.id + '/font';
+      yes.download = (it.title || 'font').replace(/[^\p{L}\p{N}\- ]/gu, '').trim().replace(/\s+/g, '-') + '-MN.woff';
+      yes.onclick = () => { setTimeout(() => { closeMatch(false); msg('Фонт сангаас татлаа · ' + (it.title || '')); }, 200); };
+      const view = document.createElement('a'); view.className = 'btn ghost'; view.textContent = 'Фонт санд харах';
+      view.href = '/fontsan/#f' + it.id; view.target = '_blank';
+      a.append(yes, view);
+      d.append(h, p, c, a); list.appendChild(d);
+      const fam = 'libm' + it.id;
+      new FontFace(fam, 'url(/api/lib/' + it.id + '/font)').load().then(ff => {
+        document.fonts.add(ff); p.style.fontFamily = '"' + fam + '", Inter, sans-serif'; p.classList.remove('loading');
+        p.textContent = 'Өглөө үүр цайх · Монгол';
+      }).catch(() => { p.textContent = ''; p.style.minHeight = '0'; });
+    });
+    matchFocus = document.activeElement;
+    $('matchModal').hidden = false;
+    const first = list.querySelector('.btn'); if (first) first.focus();
+  }
+  function closeMatch(thenAsk) {
+    $('matchModal').hidden = true;
+    if (matchFocus && matchFocus.focus) matchFocus.focus();
+    if (thenAsk) askAllLetters(); else maybeCoach();
+  }
+  $('matchNo').onclick = () => closeMatch(true);
+  $('matchModal').addEventListener('click', e => { if (e.target === $('matchModal')) closeMatch(true); });
+  $('matchModal').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeMatch(true); } });
   // ----- sharing a font, only with the user's own consent -----
   let shared = false;
   async function shareFont() {
@@ -4837,7 +4924,8 @@ def font_info(data):
     try { localStorage.setItem('ou-nick', nick); } catch (e) {}
     let b64 = ''; for (let i = 0; i < woff.length; i += 0x8000) b64 += String.fromCharCode.apply(null, woff.subarray(i, i + 0x8000));
     const payload = { nickname: nick, title: info.family + ' ' + info.style, note: $('libNote').value.trim(),
-                      changes: libChanges(), license: true, font: btoa(b64) };
+                      changes: libChanges(), license: true, font: btoa(b64),
+                      src_sha: srcSha, family: info.family || '', style: info.style || '' };
     try {
       const res = await fetch('/api/lib', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       const j = await res.json().catch(() => ({}));

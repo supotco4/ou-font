@@ -23,6 +23,9 @@ export async function onRequestPost({ request, env }) {
   if (nickname.length < 2) return json({ ok: false, error: "nickname" }, 400);
   const title = clean(q.title, 120);
   const note = clean(q.note, 600);
+  const srcSha = String(q.src_sha || "").toLowerCase().replace(/[^0-9a-f]/g, "").slice(0, 64) || null;
+  const family = clean(q.family, 120).toLowerCase() || null;
+  const style = clean(q.style, 60).toLowerCase() || null;
   let changes = "{}";
   try { changes = JSON.stringify(q.changes || {}); if (changes.length > 40000) changes = "{}"; } catch { changes = "{}"; }
 
@@ -47,7 +50,7 @@ export async function onRequestPost({ request, env }) {
 
   const status = [nickname, title, note].some((t) => t && LINKY.test(t)) ? "held" : "public";
   const res = await env.DB.prepare(
-    "INSERT INTO lib_fonts (nickname, title, note, changes, size, sha256, country, ip_hash, status, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-  ).bind(nickname, title, note, changes, buf.length, sha, (request.cf && request.cf.country) || null, ih, status, buf.buffer).run();
+    "INSERT INTO lib_fonts (nickname, title, note, changes, size, sha256, country, ip_hash, status, data, src_sha, family, style) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  ).bind(nickname, title, note, changes, buf.length, sha, (request.cf && request.cf.country) || null, ih, status, buf.buffer, srcSha, family, style).run();
   return json({ ok: true, id: res.meta && res.meta.last_row_id, held: status !== "public" });
 }
