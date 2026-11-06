@@ -3144,6 +3144,15 @@ def build_all(data, opts, edits):
     return (out or b""), base, (ext or "")
 
 
+def to_woff(data):
+    """The font as WOFF (zlib), for the public library."""
+    font = TTFont(io.BytesIO(data))
+    font.flavor = "woff"
+    out = io.BytesIO()
+    font.save(out)
+    return out.getvalue()
+
+
 def zip_one(name, data):
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:

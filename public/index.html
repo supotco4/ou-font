@@ -108,6 +108,14 @@
   .ed .top .howbtn2[hidden]{display:none}
   .howi.big{width:28px;height:28px;font-size:13px;right:12px;bottom:12px}
   #howModal{z-index:60}
+  .libform{display:flex;flex-direction:column;gap:12px;margin-top:6px}
+  .libform label{display:flex;flex-direction:column;gap:6px;font-size:13.5px;font-weight:500;color:var(--ink)}
+  .libform small{color:var(--faint);font-weight:400}
+  .libform input:not([type=checkbox]),.libform textarea{font:15px Inter,sans-serif;padding:11px 13px;border-radius:12px;border:1px solid var(--line2);background:var(--surface);color:var(--ink);resize:vertical}
+  .libform input:focus,.libform textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .libform .chk{flex-direction:row;align-items:flex-start;gap:10px;font-weight:400;color:var(--soft);line-height:1.45}
+  .libform .chk input{width:18px;height:18px;margin-top:2px;accent-color:var(--accent);flex:none}
+  .libmsg{font-size:13px;color:var(--accent)}.libmsg:empty{display:none}
   .share{display:flex;gap:10px;align-items:flex-start;max-width:640px;margin:12px auto 0;font-size:13.5px;line-height:1.45;color:var(--soft);cursor:pointer}
   .share input{width:18px;height:18px;margin-top:1px;accent-color:var(--accent);flex:none;cursor:pointer}
   .share small{display:block;color:var(--faint);font-size:12px}
@@ -299,6 +307,7 @@
   <nav>
     <div class="brand"><div class="logo">ӨҮ</div>Өү</div>
     <div class="links">
+      <a class="navlink" href="/fontsan/">Фонт сан</a>
       <a class="navlink" href="/sanal">Санал хүсэлт</a>
       <div class="engine loading" id="engine"><span class="dot"></span><span id="engineText">Бэлтгэж байна</span></div>
     </div>
@@ -359,7 +368,7 @@
   <div class="msg" id="msg"></div>
 
 
-  <footer><a href="/sanal" style="color:inherit">Санал хүсэлт</a> <span class="sep">·</span> Фонтын лиценз өөрчлөхийг зөвшөөрдөг эсэхийг шалгаарай. <span class="sep">·</span> <span class="by">А.Хонгор</span></footer>
+  <footer><a href="/fontsan/" style="color:inherit">Фонт сан</a> <span class="sep">·</span> <a href="/sanal" style="color:inherit">Санал хүсэлт</a> <span class="sep">·</span> Фонтын лиценз өөрчлөхийг зөвшөөрдөг эсэхийг шалгаарай. <span class="sep">·</span> <span class="by">А.Хонгор</span></footer>
 </div>
 
 <div class="modal" id="howModal" hidden role="dialog" aria-modal="true" aria-labelledby="howTitle">
@@ -370,6 +379,23 @@
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn ghost" type="button" id="howEdit">✎ Өөрөө засах</button>
       <button class="btn ghost" type="button" id="howClose">Хаах</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="libModal" hidden role="dialog" aria-modal="true" aria-labelledby="libTitle">
+  <div class="box" style="max-width:500px">
+    <h3 id="libTitle">Фонт санд хадгалах уу?</h3>
+    <p>Засварласан фонтоо <a href="/fontsan/" target="_blank" style="color:var(--accent)">Фонт сан</a>-д нийтэлбэл бусад хүмүүс харж, татаж, сэтгэгдэл үлдээж болно.</p>
+    <div class="libform">
+      <label>Нэр (nickname)<input id="libNick" maxlength="40" autocomplete="nickname" placeholder="жишээ нь: Хонгор"></label>
+      <label><span>Тайлбар <small>(заавал биш)</small></span><textarea id="libNote" maxlength="600" rows="3" placeholder="Юу зассан, ямар зорилгоор…"></textarea></label>
+      <label class="chk"><input type="checkbox" id="libLic"><span>Энэ фонтыг өөрчилж, бусдад түгээх эрх надад байгаа. Лиценз нь зөвшөөрдөг (жишээ нь SIL Open Font License, эсвэл миний өөрийн фонт).</span></label>
+      <div class="libmsg" id="libMsg" role="status"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px">
+      <button class="btn ghost" type="button" id="libNo">Үгүй</button>
+      <button class="btn primary" type="button" id="libYes" disabled>Фонт санд хадгалах</button>
     </div>
   </div>
 </div>
@@ -3341,6 +3367,15 @@ def build_all(data, opts, edits):
     return (out or b""), base, (ext or "")
 
 
+def to_woff(data):
+    """The font as WOFF (zlib), for the public library."""
+    font = TTFont(io.BytesIO(data))
+    font.flavor = "woff"
+    out = io.BytesIO()
+    font.save(out)
+    return out.getvalue()
+
+
 def zip_one(name, data):
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
@@ -4698,6 +4733,57 @@ def font_info(data):
   try { downloadsP = window.claude && window.claude.use ? window.claude.use('downloads') : Promise.resolve(null); }
   catch (e) { downloadsP = Promise.resolve(null); }
 
+  // ----- the public font library: offered after a download -----
+  let libBytes = null, libFocus = null;
+  function libChanges() {
+    const fx = fauxMap(), had = new Set(((info.suggest && info.suggest.letters) || []).filter(l => l.has).map(l => l.cp));
+    let ups;
+    if (mode === 'ou') ups = [0x04E8, 0x04AE].filter(cp => !info.has || !info.has[String.fromCodePoint(cp)] || overwrite);
+    else ups = [...ALPHA].map(c => c.codePointAt(0)).filter(cp => !had.has(cp) || fx[String.fromCodePoint(cp)]);
+    const how = {};
+    ups.forEach(up => { const d = howData(up); how[String.fromCodePoint(up)] = { src: d.srcs, text: d.text }; });
+    return { mode, family: info.family, style: info.style, added: ups.map(cp => String.fromCodePoint(cp)).join(''),
+             edited: Object.keys(activeEdits()).map(cp => String.fromCodePoint(+cp)).join(''), faux: info.fauxFound || '', how };
+  }
+  function offerLibrary(bytes) {
+    libBytes = bytes; libFocus = document.activeElement;
+    $('libMsg').textContent = ''; $('libYes').disabled = !$('libLic').checked || $('libNick').value.trim().length < 2;
+    try { const n = localStorage.getItem('ou-nick'); if (n && !$('libNick').value) $('libNick').value = n; } catch (e) {}
+    $('libYes').disabled = !$('libLic').checked || $('libNick').value.trim().length < 2;
+    $('libModal').hidden = false; $('libNick').focus();
+  }
+  function closeLib() { $('libModal').hidden = true; if (libFocus && libFocus.focus) libFocus.focus(); }
+  const libValid = () => { $('libYes').disabled = !$('libLic').checked || $('libNick').value.trim().length < 2; };
+  $('libNick').addEventListener('input', libValid); $('libLic').addEventListener('change', libValid);
+  $('libNo').onclick = closeLib;
+  $('libModal').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeLib(); } });
+  $('libModal').addEventListener('click', e => { if (e.target === $('libModal')) closeLib(); });
+  $('libYes').onclick = async () => {
+    if (!libBytes) return;
+    $('libYes').disabled = true; $('libMsg').textContent = 'Хадгалж байна…';
+    let woff;
+    try {
+      py.globals.set('lb_js', libBytes);
+      const w = py.runPython('mnfont.to_woff(bytes(lb_js.to_py()))'); woff = bytesFromPy(w); w.destroy();
+    } catch (e) { $('libMsg').textContent = 'Хөрвүүлж чадсангүй.'; libValid(); return; }
+    if (woff.length > 1900000) { $('libMsg').textContent = 'Фонт хэт том байна (2 MB хүртэл).'; libValid(); return; }
+    const nick = $('libNick').value.trim();
+    try { localStorage.setItem('ou-nick', nick); } catch (e) {}
+    let b64 = ''; for (let i = 0; i < woff.length; i += 0x8000) b64 += String.fromCharCode.apply(null, woff.subarray(i, i + 0x8000));
+    const payload = { nickname: nick, title: info.family + ' ' + info.style, note: $('libNote').value.trim(),
+                      changes: libChanges(), license: true, font: btoa(b64) };
+    try {
+      const res = await fetch('/api/lib', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j.ok) { $('libMsg').textContent = j.error === 'rate_limited' ? 'Өнөөдөр хэт олон фонт нийтэллээ. Маргааш дахин оролдоорой.' : 'Хадгалж чадсангүй.'; libValid(); return; }
+      $('libMsg').innerHTML = '';
+      const a = document.createElement('a'); a.href = '/fontsan/#f' + j.id; a.target = '_blank'; a.style.color = 'var(--accent)';
+      a.textContent = j.held ? 'Хадгаллаа — шалгагдсаны дараа Фонт санд гарна.' : (j.duplicate ? 'Энэ фонт Фонт санд аль хэдийн байна → харах' : 'Фонт санд нийтэллээ → харах');
+      $('libMsg').appendChild(a);
+      $('libNo').textContent = 'Хаах';
+    } catch (e) { $('libMsg').textContent = 'Хадгалж чадсангүй (сүлжээ).'; libValid(); }
+  };
+
   $('dl').addEventListener('click', async () => {
     if (!py || !srcBytes) return;
     $('dl').disabled = true; msg('Бэлтгэж байна…');
@@ -4725,6 +4811,7 @@ def font_info(data):
       }
       msg('Татагдлаа · ' + fontName);
       countDownload(r.ext);
+      offerLibrary(r.bytes);
     } catch (e) {
       const c = e && e.code;
       msg(c === 'declined' ? 'Цуцаллаа.' : c === 'rate_limited' ? 'Түр хүлээгээд дахин оролдоно уу.' : 'Татаж чадсангүй.');
