@@ -4195,6 +4195,7 @@ def font_info(data):
     $('edCanvas').focus({ preventScroll: true });
   }
   function selectLetter(cp) {
+    if (E.cp != null && E.tool === 'draw' && E.draft && E.draft.length) closeDraft();
     if (!E.base[cp]) E.base[cp] = pyOutline(cp);
     if (!E.work[cp]) {
       const src = edits[cp] ? edits[cp] : E.base[cp];
@@ -4785,6 +4786,7 @@ def font_info(data):
   function closeEditor() { $('edModal').hidden = true; $('edHelp').hidden = true; $('edHelpBtn').setAttribute('aria-expanded', false); E = null; if (lastEdFocus && lastEdFocus.focus) lastEdFocus.focus(); }
   $('edCancel').onclick = closeEditor;
   $('edSave').onclick = () => {
+    if (E && E.tool === 'draw' && E.draft && E.draft.length) closeDraft(); // keep a shape that wasn't closed yet
     let changed = false;
     Object.entries(E.work).forEach(([cp, w]) => {
       if (!w.touched) return;
