@@ -6,7 +6,7 @@ import { LINKY, clean } from "../../../_lib/mod.js";
 export async function onRequestGet({ params, env }) {
   const id = parseInt(params.id, 10);
   const { results } = await env.DB.prepare(
-    "SELECT id, created_at, nickname, message, kind, letters FROM lib_comments WHERE font_id = ? AND status = 'public' ORDER BY id ASC LIMIT 200"
+    "SELECT id, created_at, nickname, message, kind, letters, fixed_font_id, fixed_by FROM lib_comments WHERE font_id = ? AND status = 'public' ORDER BY id ASC LIMIT 200"
   ).bind(id).all();
   return json({ ok: true, items: results || [] });
 }

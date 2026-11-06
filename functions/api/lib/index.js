@@ -1,5 +1,6 @@
 // GET  /api/lib — the public font library (no font data, no IPs)
-// POST /api/lib {nickname, title, note, changes, license: true, font: base64 WOFF}
+// POST /api/lib {nickname, title, note, changes, license: true, font: base64 WOFF,
+//               parent_id?, request_id?} — with parent_id it is a new version of that font
 import { json, ipHash } from "../../_lib/util.js";
 import { LINKY, clean } from "../../_lib/mod.js";
 
@@ -7,9 +8,9 @@ const MAX = 1900000;
 
 export async function onRequestGet({ env }) {
   const { results } = await env.DB.prepare(
-    `SELECT f.id, f.created_at, f.nickname, f.title, f.note, f.changes, f.size,
+    `SELECT f.id, f.created_at, f.nickname, f.title, f.note, f.changes, f.size, f.parent_id, substr(f.sha256, 1, 12) AS v,
             (SELECT COUNT(*) FROM lib_comments c WHERE c.font_id = f.id AND c.status = 'public' AND COALESCE(c.kind, 'comment') = 'comment') AS comments,
-            (SELECT COUNT(*) FROM lib_comments c WHERE c.font_id = f.id AND c.status = 'public' AND c.kind = 'request') AS requests
+            (SELECT COUNT(*) FROM lib_comments c WHERE c.font_id = f.id AND c.status = 'public' AND c.kind = 'request' AND c.fixed_font_id IS NULL) AS requests
        FROM lib_fonts f WHERE f.status = 'public' ORDER BY f.id DESC LIMIT 200`
   ).all();
   return json({ ok: true, items: results || [] });
@@ -24,6 +25,13 @@ export async function onRequestPost({ request, env }) {
   if (nickname.length < 2) return json({ ok: false, error: "nickname" }, 400);
   const title = clean(q.title, 120);
   const note = clean(q.note, 600);
+  let parentId = null, requestId = null;
+  if (q.parent_id) {
+    const p = await env.DB.prepare("SELECT id, parent_id FROM lib_fonts WHERE id = ? AND status = 'public'").bind(parseInt(q.parent_id, 10) || 0).first();
+    if (!p) return json({ ok: false, error: "parent_not_found" }, 404);
+    parentId = p.parent_id || p.id;
+    requestId = parseInt(q.request_id, 10) || null;
+  }
   const srcSha = String(q.src_sha || "").toLowerCase().replace(/[^0-9a-f]/g, "").slice(0, 64) || null;
   const family = clean(q.family, 120).toLowerCase() || null;
   const style = clean(q.style, 60).toLowerCase() || null;
@@ -47,11 +55,17 @@ export async function onRequestPost({ request, env }) {
   const dg = await crypto.subtle.digest("SHA-256", buf);
   const sha = [...new Uint8Array(dg)].map((b) => b.toString(16).padStart(2, "0")).join("");
   const dup = await env.DB.prepare("SELECT id FROM lib_fonts WHERE sha256 = ?").bind(sha).first();
-  if (dup) return json({ ok: true, id: dup.id, duplicate: true });
+  if (dup) return json({ ok: true, id: parentId || dup.id, duplicate: true });
 
   const status = [nickname, title, note].some((t) => t && LINKY.test(t)) ? "held" : "public";
   const res = await env.DB.prepare(
-    "INSERT INTO lib_fonts (nickname, title, note, changes, size, sha256, country, ip_hash, status, data, src_sha, family, style) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-  ).bind(nickname, title, note, changes, buf.length, sha, (request.cf && request.cf.country) || null, ih, status, buf.buffer, srcSha, family, style).run();
-  return json({ ok: true, id: res.meta && res.meta.last_row_id, held: status !== "public" });
+    "INSERT INTO lib_fonts (nickname, title, note, changes, size, sha256, country, ip_hash, status, data, src_sha, family, style, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  ).bind(nickname, title, note, changes, buf.length, sha, (request.cf && request.cf.country) || null, ih, status, buf.buffer, srcSha, family, style, parentId).run();
+  const newId = res.meta && res.meta.last_row_id;
+  if (requestId && parentId && newId && status === "public") {
+    await env.DB.prepare(
+      "UPDATE lib_comments SET fixed_font_id = ?, fixed_by = ? WHERE id = ? AND font_id = ? AND kind = 'request' AND fixed_font_id IS NULL"
+    ).bind(newId, nickname, requestId, parentId).run();
+  }
+  return json({ ok: true, id: parentId || newId, version: newId, held: status !== "public" });
 }

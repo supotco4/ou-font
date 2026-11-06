@@ -217,6 +217,17 @@
   .mitem .mc{font-size:12.5px;color:var(--soft);margin-bottom:10px}
   .mitem .ma{display:flex;gap:8px;flex-wrap:wrap}
   .mitem .ma .btn{padding:10px 14px;font-size:13.5px;text-decoration:none}
+  .fixbar{display:none;align-items:center;gap:14px;justify-content:space-between;flex-wrap:wrap;margin:12px 0 0;padding:14px 18px;border-radius:20px;
+    background:color-mix(in srgb, #f59e0b 9%, var(--surface));border:1px solid color-mix(in srgb, #f59e0b 45%, transparent)}
+  body.loaded .fixbar:not([hidden]){display:flex}
+  .fixbar .ft{flex:1;min-width:240px}
+  .fixbar .fl{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .fixbar .tag{font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;background:color-mix(in srgb, #f59e0b 22%, transparent);color:#b45309}
+  @media (prefers-color-scheme: dark){ .fixbar .tag{color:#fbbf24} }
+  .fixbar .fl b{font-size:22px;letter-spacing:2px;line-height:1}
+  .fixbar .fl small{color:var(--faint);font-size:12.5px}
+  .fixbar p{margin-top:6px;color:var(--soft);font-size:14px;white-space:pre-wrap;word-wrap:break-word}
+  .fixbar .fa{display:flex;gap:8px;flex-wrap:wrap}
   #libModal .box{position:relative;overflow:hidden}
   .libdone{position:absolute;inset:0;background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;z-index:2;animation:ldIn .25s ease-out both}
   .libdone[hidden]{display:none}
@@ -372,6 +383,17 @@
     </button>
   </div>
 
+  <div class="fixbar" id="fixBar" hidden role="region" aria-label="Засах хүсэлт">
+    <div class="ft">
+      <div class="fl"><span class="tag">Засах хүсэлт</span><b id="fixLetters"></b><small id="fixBy"></small></div>
+      <p id="fixMsg"></p>
+    </div>
+    <div class="fa">
+      <button class="btn ghost" type="button" id="fixEdit">✎ Засварлагч нээх</button>
+      <button class="btn primary" type="button" id="fixSend">Засвараа илгээх</button>
+    </div>
+  </div>
+
   <div class="modes" role="tablist" aria-label="Нэмэх үсэг">
     <button type="button" role="tab" id="mOU" aria-selected="false">Зөвхөн Ө Ү</button>
     <button type="button" role="tab" id="mAll" aria-selected="true">Бүх үсэг</button>
@@ -418,11 +440,11 @@
 <div class="modal" id="libModal" hidden role="dialog" aria-modal="true" aria-labelledby="libTitle">
   <div class="box" style="max-width:500px">
     <h3 id="libTitle">Фонт санд хадгалах уу?</h3>
-    <p>Засварласан фонтоо <a href="/fontsan/" target="_blank" style="color:var(--accent)">Фонт сан</a>-д нийтэлбэл бусад хүмүүс харж, татаж, сэтгэгдэл үлдээж болно.</p>
+    <p id="libLead">Засварласан фонтоо <a href="/fontsan/" target="_blank" style="color:var(--accent)">Фонт сан</a>-д нийтэлбэл бусад хүмүүс харж, татаж, сэтгэгдэл үлдээж болно.</p>
     <div class="libform">
       <label>Нэр (nickname)<input id="libNick" maxlength="40" autocomplete="nickname" placeholder="жишээ нь: Хонгор"></label>
       <label><span>Тайлбар <small>(заавал биш)</small></span><textarea id="libNote" maxlength="600" rows="3" placeholder="Юу зассан, ямар зорилгоор…"></textarea></label>
-      <label class="chk"><input type="checkbox" id="libLic"><span>Энэ фонтыг өөрчилж, бусдад түгээх эрх надад байгаа. Лиценз нь зөвшөөрдөг (жишээ нь SIL Open Font License, эсвэл миний өөрийн фонт).</span></label>
+      <label class="chk"><input type="checkbox" id="libLic"><span id="libLicText">Энэ фонтыг өөрчилж, бусдад түгээх эрх надад байгаа. Лиценз нь зөвшөөрдөг (жишээ нь SIL Open Font License, эсвэл миний өөрийн фонт).</span></label>
       <div class="libmsg" id="libMsg" role="status"></div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px">
@@ -3538,8 +3560,8 @@ def font_info(data):
   const drop = $('drop');
   ['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
   ['dragleave', 'drop'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
-  document.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) loadFile(f); });
-  $('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) loadFile(f); e.target.value = ''; });
+  document.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) { endFix(); loadFile(f); } });
+  $('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) { endFix(); loadFile(f); } e.target.value = ''; });
 
   async function loadFile(file) {
     srcName = file.name; overwrite = false; edits = {}; baseBytes = null;
@@ -3559,11 +3581,59 @@ def font_info(data):
     renderAlpha();
     regenerate();
     srcSha = '';
+    if (fixCtx) { startFixUI(); return; }
     const mine = srcBytes;
     const found = await checkLibrary(mine);
     if (mine !== srcBytes) return;
     if (found) showMatches(found); else askAllLetters();
   }
+  // ----- fixing a "Засах хүсэлт" from the Фонт сан: /?fix=<font id>&req=<request id> -----
+  var fixCtx = null;
+  function endFix() {
+    if (!fixCtx) return;
+    fixCtx = null; $('fixBar').hidden = true;
+    try { setMode(localStorage.getItem('ou-mode') || 'ou', true); } catch (e) {}
+    history.replaceState(null, '', location.pathname);
+  }
+  function startFixUI() {
+    const r = fixCtx.req || {};
+    $('fixLetters').textContent = r.letters || '';
+    $('fixBy').textContent = (r.nickname ? r.nickname + ' · ' : '') + (fixCtx.title || '');
+    $('fixMsg').textContent = r.message || 'Энэ фонтын үсгийг засаад «Засвараа илгээх» дарна уу.';
+    $('fixSend').disabled = false; $('fixSend').textContent = 'Засвараа илгээх';
+    $('fixBar').hidden = false;
+    const first = [...(r.letters || '')].map(c => c.codePointAt(0)).find(cp => ALL_CPS.includes(cp));
+    setTimeout(() => { if (baseBytes) openEditor(first || 0x0410); }, 300);
+  }
+  $('fixEdit').onclick = () => { const r = (fixCtx && fixCtx.req) || {}; const cp = [...(r.letters || '')].map(c => c.codePointAt(0)).find(c => ALL_CPS.includes(c)); openEditor(cp || 0x0410); };
+  $('fixSend').onclick = () => {
+    if (!fixCtx || !py || !srcBytes) return;
+    if (!Object.keys(activeEdits()).length) { msg('Эхлээд үсгээ засаад «Хадгалах» дарна уу.'); $('fixEdit').focus(); return; }
+    let r; try { r = build(outFamily()); } catch (e) { msg('Алдаа: ' + shortErr(e)); return; }
+    offerLibrary(r.bytes);
+  };
+  async function bootFix() {
+    const q = new URLSearchParams(location.search);
+    const id = parseInt(q.get('fix'), 10), req = parseInt(q.get('req'), 10) || null;
+    if (!id) return;
+    msg('Фонт сангаас ачаалж байна…');
+    try {
+      const lj = await (await fetch('/api/lib')).json();
+      const it = (lj.items || []).find(x => x.id === id);
+      if (!it) { msg('Энэ фонт Фонт санд олдсонгүй.'); return; }
+      const root = it.parent_id || it.id;
+      let rq = null;
+      if (req) { try { const cj = await (await fetch('/api/lib/' + root + '/comments')).json(); rq = (cj.items || []).find(c => c.id === req && c.kind === 'request') || null; } catch (e) {} }
+      const fr = await fetch('/api/lib/' + id + '/font' + (it.v ? '?v=' + it.v : ''));
+      if (!fr.ok) { msg('Фонтыг ачаалж чадсангүй.'); return; }
+      const buf = await fr.arrayBuffer();
+      fixCtx = { id, root, reqId: rq && !rq.fixed_font_id ? req : null, req: rq, title: (it.title || '').replace(/\s+MN$/, '') };
+      if (rq && rq.fixed_font_id) msg('Энэ хүсэлтийг ' + (rq.fixed_by || 'хэн нэгэн') + ' аль хэдийн зассан байна. Та дахин засаж шинэ хувилбар оруулж болно.');
+      setMode('all', true);
+      await loadFile(new File([buf], (it.title || 'font') + '.woff'));
+    } catch (e) { msg('Фонт сангаас ачаалж чадсангүй (сүлжээ).'); }
+  }
+  function outFamily() { return /\sMN$/.test(info.family) ? info.family : info.family + ' MN'; }
   // ----- is this font already in the Фонт сан? -----
   let srcSha = '', matchFocus = null;
   async function sha256Hex(bytes) {
@@ -3755,7 +3825,7 @@ def font_info(data):
   const OU = [0x04E8, 0x04E9, 0x04AE, 0x04AF];
   function setMode(m, quiet) {
     mode = m;
-    try { localStorage.setItem('ou-mode', m); } catch (e) {}
+    if (!fixCtx) try { localStorage.setItem('ou-mode', m); } catch (e) {}
     $('mOU').setAttribute('aria-selected', m === 'ou'); $('mAll').setAttribute('aria-selected', m === 'all');
     document.body.classList.toggle('all', m === 'all');
     if (info) renderAlpha();
@@ -4893,11 +4963,22 @@ def font_info(data):
     else ups = [...ALPHA].map(c => c.codePointAt(0)).filter(cp => !had.has(cp) || fx[String.fromCodePoint(cp)]);
     const how = {};
     ups.forEach(up => { const d = howData(up); how[String.fromCodePoint(up)] = { src: d.srcs, text: d.text }; });
+    if (fixCtx) return { mode, family: info.family, style: info.style, fix: true, added: '',
+                         edited: Object.keys(activeEdits()).map(cp => String.fromCodePoint(+cp)).join(''), faux: '', how: {} };
     return { mode, family: info.family, style: info.style, added: ups.map(cp => String.fromCodePoint(cp)).join(''),
              edited: Object.keys(activeEdits()).map(cp => String.fromCodePoint(+cp)).join(''), faux: info.fauxFound || '', how };
   }
   function offerLibrary(bytes) {
     libBytes = bytes; libFocus = document.activeElement;
+    const fx = !!fixCtx;
+    $('libTitle').textContent = fx ? 'Засвараа Фонт санд илгээх үү?' : 'Фонт санд хадгалах уу?';
+    $('libLead').innerHTML = fx ? 'Таны засвар «<b></b>» фонтын шинэ хувилбар болж нэмэгдэнэ. Анхны хувилбар хэвээр үлдэнэ.'
+      : 'Засварласан фонтоо <a href="/fontsan/" target="_blank" style="color:var(--accent)">Фонт сан</a>-д нийтэлбэл бусад хүмүүс харж, татаж, сэтгэгдэл үлдээж болно.';
+    if (fx) $('libLead').querySelector('b').textContent = fixCtx.title || '';
+    $('libLicText').textContent = fx ? 'Би энэ засварыг өөрөө хийсэн бөгөөд Фонт санд нийтлэхийг зөвшөөрч байна.'
+      : 'Энэ фонтыг өөрчилж, бусдад түгээх эрх надад байгаа. Лиценз нь зөвшөөрдөг (жишээ нь SIL Open Font License, эсвэл миний өөрийн фонт).';
+    $('libNote').placeholder = fx ? 'Юуг яаж зассан бэ…' : 'Юу зассан, ямар зорилгоор…';
+    $('libYes').textContent = fx ? 'Засвараа илгээх' : 'Фонт санд хадгалах';
     $('libDone').hidden = true; $('libModal').classList.remove('closing'); clearTimeout(libTimer); $('libNo').textContent = 'Үгүй';
     $('libMsg').textContent = ''; $('libYes').disabled = !$('libLic').checked || $('libNick').value.trim().length < 2;
     try { const n = localStorage.getItem('ou-nick'); if (n && !$('libNick').value) $('libNick').value = n; } catch (e) {}
@@ -4951,15 +5032,19 @@ def font_info(data):
     const nick = $('libNick').value.trim();
     try { localStorage.setItem('ou-nick', nick); } catch (e) {}
     let b64 = ''; for (let i = 0; i < woff.length; i += 0x8000) b64 += String.fromCharCode.apply(null, woff.subarray(i, i + 0x8000));
-    const payload = { nickname: nick, title: info.family + ' ' + info.style, note: $('libNote').value.trim(),
+    const payload = { nickname: nick, title: fixCtx ? fixCtx.title : info.family + ' ' + info.style, note: $('libNote').value.trim(),
                       changes: libChanges(), license: true, font: btoa(b64),
                       src_sha: srcSha, family: info.family || '', style: info.style || '' };
+    if (fixCtx) { payload.parent_id = fixCtx.id; if (fixCtx.reqId) payload.request_id = fixCtx.reqId; }
     try {
       const res = await fetch('/api/lib', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || !j.ok) { $('libMsg').textContent = j.error === 'rate_limited' ? 'Өнөөдөр хэт олон фонт нийтэллээ. Маргааш дахин оролдоорой.' : 'Хадгалж чадсангүй.'; libValid(); return; }
       $('libMsg').textContent = '';
-      libCelebrate(j.held ? 'Шалгагдсаны дараа Фонт санд гарна.' : j.duplicate ? 'Энэ фонт Фонт санд аль хэдийн байна.' : 'Таны фонт Фонт санд нэмэгдлээ.', '/fontsan/#f' + j.id);
+      const wasFix = !!fixCtx;
+      libCelebrate(j.held ? 'Шалгагдсаны дараа Фонт санд гарна.' : j.duplicate ? 'Энэ фонт Фонт санд аль хэдийн байна.'
+        : wasFix ? 'Таны засвар шинэ хувилбар болж нэмэгдлээ.' : 'Таны фонт Фонт санд нэмэгдлээ.', '/fontsan/#f' + j.id);
+      if (wasFix && !j.duplicate) { $('fixSend').disabled = true; $('fixSend').textContent = 'Илгээсэн ✓'; fixCtx.reqId = null; }
     } catch (e) { $('libMsg').textContent = 'Хадгалж чадсангүй (сүлжээ).'; libValid(); }
   };
 
@@ -4967,7 +5052,7 @@ def font_info(data):
     if (!py || !srcBytes) return;
     $('dl').disabled = true; msg('Бэлтгэж байна…');
     let r;
-    const family = info.family + ' MN';
+    const family = outFamily();
     try { r = build(family); } catch (e) { msg('Алдаа: ' + shortErr(e)); $('dl').disabled = false; return; }
     const fam = family.replace(/[^\p{L}\p{N}\- _]/gu, '').replace(/\s+/g, '');
     const fontName = fam + '-' + info.style.replace(/\s+/g, '') + '.' + r.ext;
@@ -4996,6 +5081,7 @@ def font_info(data):
       msg(c === 'declined' ? 'Цуцаллаа.' : c === 'rate_limited' ? 'Түр хүлээгээд дахин оролдоно уу.' : 'Татаж чадсангүй.');
     } finally { $('dl').disabled = false; }
   });
+  bootFix();
 })();
 </script>
 </body>

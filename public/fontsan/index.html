@@ -113,6 +113,25 @@
   .cform input.letters[hidden]{display:none}
   .cform textarea{flex:1;min-width:200px;min-height:42px;resize:vertical}
   .cform .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+  .tile .bd.vb{background:var(--ink);color:var(--bg);border-color:transparent}
+  .cm .c.done{border-color:color-mix(in srgb, #22c55e 45%, transparent);background:color-mix(in srgb, #22c55e 7%, var(--tile))}
+  .cm .c.done .tag{background:color-mix(in srgb, #22c55e 20%, transparent);color:#15803d}
+  @media (prefers-color-scheme: dark){ .cm .c.done .tag{color:#4ade80} }
+  .cm .c .fx{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
+  .cm .c .fx .ok{font-size:13px;color:var(--soft)}
+  .cm .c .fx .ok b{color:var(--ink)}
+  .cm .c .fx .hint{font-size:12px;color:var(--faint)}
+  .btn.sm{padding:8px 13px;font-size:12.5px}
+  .vers{display:flex;flex-direction:column;gap:8px}
+  .ver{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"g t a" "g w a";gap:2px 12px;align-items:center;background:var(--tile);border-radius:14px;padding:10px 12px;border:1px solid transparent}
+  .ver.cur{border-color:var(--accent)}
+  .ver .vg{grid-area:g;font-size:30px;min-width:56px;text-align:center;line-height:1}
+  .ver .vg.loading{font:12px Inter,sans-serif;color:var(--faint)}
+  .ver .vt{grid-area:t;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .ver .vt b{font-size:14px}
+  .ver .vt span{font-size:12.5px;color:var(--faint)}
+  .ver .vw{grid-area:w;font-size:13px;color:var(--soft)}
+  .ver .btn{grid-area:a;padding:9px 12px}
   .rep{background:none;border:0;color:var(--faint);font:inherit;font-size:12px;cursor:pointer;padding:3px 6px;border-radius:8px;margin-left:auto}
   .rep:hover{color:#e5484d}
   .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -150,16 +169,26 @@
   const $ = id => document.getElementById(id);
   const SAMPLE = 'Монгол хэл бичиг · Өглөөний нар · Үүрийн гэгээ';
   const ALPHA = 'АБВГДЕЁЖЗИЙКЛМНОӨПРСТУҮФХЦЧШЩЪЫЬЭЮЯ';
-  let items = [], openId = null, lastFocus = null;
+  let openLatest = null, all = [], items = [], openId = null, lastFocus = null;
+  // a font and its fixed versions: items holds the originals, each with .versions (oldest first)
+  function group(list) {
+    const byId = new Map(list.map(x => [x.id, x]));
+    list.forEach(x => vOf.set(x.id, x.v));
+    const roots = list.filter(x => !x.parent_id || !byId.has(x.parent_id));
+    roots.forEach(r => { r.versions = [r].concat(list.filter(x => x.parent_id === r.id).sort((a, b) => a.id - b.id)); r.latest = r.versions[r.versions.length - 1]; });
+    return roots;
+  }
   const fmtDate = s => { try { const d = new Date(String(s).replace(' ', 'T') + 'Z'); return d.toLocaleDateString('mn-MN', { year: 'numeric', month: 'short', day: 'numeric' }); } catch (e) { return s; } };
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const parse = it => { if (it._ch) return it._ch; try { it._ch = JSON.parse(it.changes || '{}'); } catch (e) { it._ch = {}; } return it._ch; };
 
+  const vOf = new Map();
+  const fontUrl = id => '/api/lib/' + id + '/font' + (vOf.get(id) ? '?v=' + vOf.get(id) : '');
   const faces = new Map();
   function loadFace(id, nodes) {
     const fam = 'lib' + id;
     nodes.forEach(n => n.style.fontFamily = '"' + fam + '", Inter, sans-serif');
-    if (!faces.has(id)) faces.set(id, new FontFace(fam, 'url(/api/lib/' + id + '/font)').load().then(ff => { document.fonts.add(ff); return true; }).catch(() => false));
+    if (!faces.has(id)) faces.set(id, new FontFace(fam, 'url(' + fontUrl(id) + ')').load().then(ff => { document.fonts.add(ff); return true; }).catch(() => false));
     faces.get(id).then(ok => nodes.forEach(n => {
       if (ok) { n.classList.remove('loading'); if (n._txt != null) n.textContent = n._txt; return; }
       n.style.fontFamily = '';
@@ -180,11 +209,12 @@
     const meta = el('div', 'meta');
     meta.append(el('b', '', it.title || 'Нэргүй фонт'), el('span', '', (it.nickname || 'Нэргүй') + ' · ' + fmtDate(it.created_at)));
     const bd = el('div', 'badges');
+    if (it.versions.length > 1) bd.appendChild(el('span', 'bd vb', 'v' + it.versions.length));
     if (it.comments) bd.appendChild(el('span', 'bd', '💬 ' + it.comments));
     if (it.requests) bd.appendChild(el('span', 'bd', '✎ ' + it.requests));
     b.append(bd, gl, meta);
     b.onclick = () => openFont(it.id);
-    if (io) { b._id = it.id; b._gl = gl; io.observe(b); } else loadFace(it.id, [gl]);
+    if (io) { b._id = it.latest.id; b._gl = gl; io.observe(b); } else loadFace(it.latest.id, [gl]);
     return b;
   }
 
@@ -207,15 +237,29 @@
     if (req) m.appendChild(el('span', 'tag', 'Засах хүсэлт'));
     m.appendChild(el('span', '', fmtDate(c.created_at)));
     d.appendChild(m);
-    if (req && c.letters) { const lt = el('div', 'lt', c.letters); loadFace(openId, [lt]); d.appendChild(lt); }
+    if (req && c.letters) { const lt = el('div', 'lt', c.letters); loadFace(c.fixed_font_id || openLatest, [lt]); d.appendChild(lt); }
     d.appendChild(el('div', 'x', c.message));
+    if (req) {
+      const f = el('div', 'fx');
+      if (c.fixed_font_id) {
+        d.classList.add('done'); m.querySelector('.tag').textContent = 'Зассан';
+        const s = el('span', 'ok'); s.append('✓ ', el('b', '', c.fixed_by || 'Нэргүй'), ' зассан');
+        f.appendChild(s);
+      } else {
+        const a = el('a', 'btn primary sm', '✎ Би засъя');
+        a.href = '/?fix=' + openLatest + '&req=' + c.id;
+        a.title = 'Энэ фонтыг Өү дээр нээж засаад, шинэ хувилбар болгон оруулна';
+        f.append(a, el('span', 'hint', 'Өү дээр нээгээд засна. Таны засвар шинэ хувилбар болж нэмэгдэнэ.'));
+      }
+      d.appendChild(f);
+    }
     return d;
   }
 
   function openFont(id) {
     const it = items.find(x => x.id === id); if (!it) return;
     const ch = parse(it);
-    openId = id; lastFocus = document.activeElement;
+    openId = id; openLatest = it.latest.id; lastFocus = document.activeElement;
     const sh = $('sheet'); sh.innerHTML = '';
     const x = el('button', 'close', '×'); x.type = 'button'; x.setAttribute('aria-label', 'Хаах'); x.onclick = closeFont;
     const head = el('div', 'head'), t = el('div', 't');
@@ -223,7 +267,8 @@
     const by = el('span'); by.append('Оруулсан: ', el('i', '', it.nickname || 'Нэргүй'), ' · ' + fmtDate(it.created_at));
     t.append(h2, by); head.appendChild(t);
     const acts = el('div', 'acts');
-    const dl = el('a', 'btn primary', '↓ Татах'); dl.href = '/api/lib/' + it.id + '/font';
+    const L = it.latest;
+    const dl = el('a', 'btn primary', it.versions.length > 1 ? '↓ Татах (v' + it.versions.length + ')' : '↓ Татах'); dl.href = fontUrl(L.id);
     dl.download = (it.title || 'font').replace(/[^\p{L}\p{N}\- ]/gu, '').trim().replace(/\s+/g, '-') + '-MN.woff';
     const rq = el('button', 'btn ghost', '✎ Засах хүсэлт'); rq.type = 'button';
     acts.append(dl, rq);
@@ -238,7 +283,25 @@
     if (ch.faux) addChip('Танисан:', ch.faux);
     sh.append(x, head, acts, pv, al, chips);
     if (it.note) sh.appendChild(el('div', 'note', it.note));
-    loadFace(it.id, [pv, al]);
+    loadFace(L.id, [pv, al]);
+    if (it.versions.length > 1) {
+      const vs = el('div', 'sec'); vs.appendChild(el('h3', '', 'Хувилбарууд (' + it.versions.length + ')'));
+      const vl = el('div', 'vers');
+      it.versions.slice().reverse().forEach((v, i) => {
+        const n = it.versions.indexOf(v) + 1, vc = parse(v);
+        const r = el('div', 'ver' + (v === L ? ' cur' : ''));
+        const tx = el('div', 'vt');
+        tx.append(el('b', '', 'v' + n + (n === 1 ? ' · Анхны' : '')), el('span', '', (v.nickname || 'Нэргүй') + ' · ' + fmtDate(v.created_at)));
+        const what = n === 1 ? (vc.added ? 'Нэмсэн: ' + vc.added : '') : (vc.edited ? 'Зассан: ' + vc.edited : 'Засвар');
+        const sm = el('div', 'vw', [what, v.note].filter(Boolean).join(' — '));
+        const g = el('span', 'vg loading', ''); g._txt = (vc.edited || 'Өө').slice(0, 4);
+        loadFace(v.id, [g]);
+        const a = el('a', 'btn ghost', '↓'); a.href = fontUrl(v.id); a.title = 'v' + n + ' татах'; a.setAttribute('aria-label', 'v' + n + ' татах');
+        a.download = (it.title || 'font').replace(/[^\p{L}\p{N}\- ]/gu, '').trim().replace(/\s+/g, '-') + '-v' + n + '-MN.woff';
+        r.append(g, tx, sm, a); vl.appendChild(r);
+      });
+      vs.appendChild(vl); sh.appendChild(vs);
+    }
     const how = ch.how || {}, keys = Object.keys(how);
     if (keys.length) {
       const sec = el('div', 'sec'); sec.appendChild(el('h3', '', 'Үсэг бүрийг хэрхэн үүсгэсэн (' + keys.length + ')'));
@@ -246,7 +309,7 @@
       keys.forEach(k => {
         const r = el('div', 'r'), gl = el('span', 'g', k + k.toLowerCase());
         const p = el('p'); p.append(el('b', '', k + ' — '), (how[k].src && how[k].src.length ? '«' + how[k].src.join(' + ') + '» → ' : ''), how[k].text || '');
-        r.append(gl, p); g.appendChild(r); loadFace(it.id, [gl]);
+        r.append(gl, p); g.appendChild(r); loadFace(L.id, [gl]);
       });
       sec.appendChild(g); sh.appendChild(sec);
     }
@@ -324,7 +387,7 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal').hidden) closeFont(); });
   $('q').addEventListener('input', render);
   fetch('/api/lib').then(r => r.json()).then(j => {
-    items = j.items || []; render();
+    all = j.items || []; items = group(all); render();
     const m = /^#f(\d+)$/.exec(location.hash); if (m) openFont(+m[1]);
   }).catch(() => { $('grid').innerHTML = ''; $('grid').appendChild(el('div', 'empty', 'Ачаалж чадсангүй. Дахин оролдоно уу.')); });
 })();

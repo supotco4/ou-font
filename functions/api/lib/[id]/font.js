@@ -1,5 +1,5 @@
 // GET /api/lib/:id/font — the font file of a public library entry
-export async function onRequestGet({ params, env }) {
+export async function onRequestGet({ params, env, request }) {
   const id = parseInt(params.id, 10);
   const row = id && await env.DB.prepare("SELECT title, data FROM lib_fonts WHERE id = ? AND status = 'public'").bind(id).first();
   if (!row || !row.data) return new Response("not found", { status: 404 });
@@ -10,7 +10,7 @@ export async function onRequestGet({ params, env }) {
     headers: {
       "content-type": isW2 ? "font/woff2" : "font/woff",
       "content-disposition": `inline; filename="${name}-MN.${isW2 ? "woff2" : "woff"}"`,
-      "cache-control": "public, max-age=86400",
+      "cache-control": new URL(request.url).searchParams.get("v") ? "public, max-age=31536000, immutable" : "no-cache",
     },
   });
 }
