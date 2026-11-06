@@ -117,11 +117,6 @@
   .libform .chk{flex-direction:row;align-items:flex-start;gap:10px;font-weight:400;color:var(--soft);line-height:1.45}
   .libform .chk input{width:18px;height:18px;margin-top:2px;accent-color:var(--accent);flex:none}
   .libmsg{font-size:13px;color:var(--accent)}.libmsg:empty{display:none}
-  .share{display:flex;gap:10px;align-items:flex-start;max-width:640px;margin:12px auto 0;font-size:13.5px;line-height:1.45;color:var(--soft);cursor:pointer}
-  .share input{width:18px;height:18px;margin-top:1px;accent-color:var(--accent);flex:none;cursor:pointer}
-  .share small{display:block;color:var(--faint);font-size:12px}
-  .share-ok{max-width:640px;margin:6px auto 0;font-size:12.5px;color:var(--accent);min-height:0}
-  .share-ok:empty{display:none}
   .recipes{display:none;margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow);padding:24px}
   body.all.loaded .recipes:not(:empty){display:block}
   .recipes h2{font:700 20px/1.2 "Unbounded MN",Unbounded,sans-serif;letter-spacing:-.02em;margin:0 0 4px}
@@ -356,7 +351,7 @@
 
   <section class="hero">
     <h1>Фонтоо <em>Монгол</em><br>болгоё.</h1>
-    <p class="lead">Ө ө Ү ү, мөн дутуу кирилл үсгүүдийг фонтын өөрийн хэлбэрээс нь автоматаар үүсгэнэ. Файл тань таны төхөөрөмжөөс гарахгүй — доорх сонголтыг өөрөө чагталбал л хадгалагдана.</p>
+    <p class="lead">Ө ө Ү ү, мөн дутуу кирилл үсгүүдийг фонтын өөрийн хэлбэрээс нь автоматаар үүсгэнэ. Файл тань таны төхөөрөмжөөс гарахгүй — татахдаа Фонт санд хадгалахыг өөрөө сонговол л нийтлэгдэнэ.</p>
   </section>
 
   <label class="drop" id="drop">
@@ -367,11 +362,6 @@
     </div>
     <input type="file" id="file" accept=".ttf,.otf,.woff,.woff2,font/*">
   </label>
-  <label class="share" for="shareOk">
-    <input type="checkbox" id="shareOk">
-    <span>Энэ фонтоо сайтыг сайжруулахад ашиглуулахыг зөвшөөрч байна. <small>Зөвхөн хөгжүүлэгч харна, хэнд ч түгээхгүй. Фонтын лиценз үүнийг зөвшөөрдөг эсэхийг шалгаарай.</small></span>
-  </label>
-  <div class="share-ok" id="shareMsg" role="status"></div>
 
   <div class="bar">
     <div class="file"><b id="fname"></b><span id="fmeta"></span></div>
@@ -3567,8 +3557,6 @@ def font_info(data):
     captions();
     renderAlpha();
     regenerate();
-    shared = false;
-    shareFont();
     srcSha = '';
     const mine = srcBytes;
     const found = await checkLibrary(mine);
@@ -3636,20 +3624,6 @@ def font_info(data):
   $('matchNo').onclick = () => closeMatch(true);
   $('matchModal').addEventListener('click', e => { if (e.target === $('matchModal')) closeMatch(true); });
   $('matchModal').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeMatch(true); } });
-  // ----- sharing a font, only with the user's own consent -----
-  let shared = false;
-  async function shareFont() {
-    if (!$('shareOk').checked || !srcBytes || shared || !info) return;
-    shared = true;
-    if (srcBytes.length > 1900000) { $('shareMsg').textContent = 'Фонт хэт том тул хадгалж чадсангүй (2 MB хүртэл).'; return; }
-    const q = new URLSearchParams({ name: srcName || '', family: (info.family || '') + ' ' + (info.style || ''),
-      note: 'cyr=' + info.cyr + (info.fauxFound ? ' faux=' + info.fauxFound : '') + ' mode=' + mode });
-    try {
-      const r = await fetch('/api/font?' + q, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: srcBytes });
-      $('shareMsg').textContent = r.ok ? 'Баярлалаа! Фонтыг сайтыг сайжруулахад ашиглахаар хадгаллаа.' : 'Хадгалж чадсангүй.';
-    } catch (e) { shared = false; $('shareMsg').textContent = 'Хадгалж чадсангүй (сүлжээ).'; }
-  }
-  $('shareOk').addEventListener('change', () => { if ($('shareOk').checked) shareFont(); else $('shareMsg').textContent = ''; });
   // ----- one-time hint: "press the ? on a letter" -----
   let coachEl = null, coachT = null;
   function coachSeen() { try { return localStorage.getItem('ou-howhint') === '1'; } catch (e) { return false; } }
