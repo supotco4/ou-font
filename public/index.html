@@ -32,7 +32,8 @@
   .wrap{position:relative;z-index:1;max-width:1040px;margin:0 auto;padding:22px 24px 80px}
 
   nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:64px}
-  .brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:-.01em}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:-.01em;color:inherit;text-decoration:none;border-radius:10px}
+  .brand:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
   .logo{width:30px;height:30px;border-radius:9px;background:var(--ink);color:var(--bg);display:grid;place-items:center;
     font:700 13px/1 "Unbounded MN",Unbounded,sans-serif;letter-spacing:-.04em}
   .engine{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--soft);padding:6px 12px;border:1px solid var(--line);border-radius:99px;background:var(--surface)}
@@ -345,7 +346,7 @@
 <body>
 <div class="wrap">
   <nav>
-    <div class="brand"><div class="logo">ӨҮ</div><span class="brand-name">Өү</span></div>
+    <a class="brand" href="./" aria-label="Өү — нүүр хуудас"><div class="logo">ӨҮ</div><span class="brand-name">Өү</span></a>
     <div class="links">
       <a class="libbtn" href="/fontsan/"><span class="ic" aria-hidden="true">Aa</span>Фонт сан</a>
       <a class="navlink" href="/sanal">Санал хүсэлт</a>
