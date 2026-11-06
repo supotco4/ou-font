@@ -281,6 +281,11 @@
   .ed .letters button{font:600 16px/1 Inter,sans-serif;min-width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--tile);color:var(--ink);cursor:pointer;position:relative;flex:none}
   .ed .letters button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
   .ed .letters button:disabled{opacity:.3;cursor:default}
+  .ed .letters button.miss{border-style:dashed;color:var(--faint);background:transparent}
+  .ed .letters button.miss[aria-pressed=true]{background:var(--ink);color:var(--bg);border-style:solid}
+  .ed .edempty{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-width:300px;text-align:center;pointer-events:none;display:flex;flex-direction:column;gap:6px;color:var(--soft);font-size:13.5px;line-height:1.45;background:color-mix(in srgb, var(--surface) 85%, transparent);padding:14px 16px;border-radius:14px}
+  .ed .edempty[hidden]{display:none}
+  .ed .edempty b{color:var(--ink);font-size:14.5px}
   .ed .letters button.mod::after{content:"";position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--accent)}
   .ed .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .ed .seg{display:flex;background:var(--tile);border:1px solid var(--line);border-radius:12px;padding:3px;gap:2px}
@@ -527,6 +532,10 @@
       <svg id="edSvg" aria-label="Үсгийн хэлбэр"></svg>
       <div class="mini" aria-hidden="true"><svg id="edMini"></svg></div>
       <div class="readout" id="edRead"></div>
+      <div class="edempty" id="edEmpty" hidden>
+        <b>Энэ үсэг фонтод байхгүй байна</b>
+        <span>«Дүрс»-ээр зурж, эсвэл өөр үсгээс хэсгийг нь хуулж (Ctrl+C) энд буулгаад (Ctrl+V) нэмээрэй.</span>
+      </div>
       <div class="help" id="edHelp" hidden>
         <b>Хулгана</b>
         <span>Хоосон газар чирэх</span><i>олон цэг сонгох</i>
@@ -2078,10 +2087,20 @@ def _soft(font):                # Ь ← P flipped vertically
     return _tx(P, (1, 0, 0, -1, 0, y0 + y1)), w
 
 
-def make_be(font, M):           # Б  ← Ь + top arm of E
+def make_be(font, M):           # Б  ← Ь + top arm of E (or T's top bar)
     r = _soft(font)
+    if not r:
+        return None
+    try:
+        got = _be_from_e(font, M, r)
+    except Exception:
+        got = None
+    return got or _be_from_bar(font, M, r)
+
+
+def _be_from_e(font, M, r):
     E, we = _load(font, "E")
-    if not r or not E:
+    if not E:
         return None
     soft, w = r
     ex0, ey0, ex1, ey1 = _bboxP(E)
@@ -2094,6 +2113,8 @@ def make_be(font, M):           # Б  ← Ь + top arm of E
         return None
     arm_bot = hv[-2]
     arm = _cut(_cut(E, "y", arm_bot - 0.5, True), "x", eR, True)
+    if not arm:
+        return None
     sx0, sy0, sx1, sy1 = _bboxP(soft)
     h2 = _hitsP(soft, "y", sy1 - M["bt"] * 0.5)
     if len(h2) < 2:
@@ -2101,7 +2122,30 @@ def make_be(font, M):           # Б  ← Ь + top arm of E
     sR = h2[1]
     arm = _tx(arm, (1, 0, 0, 1, sR - eR, sy1 - ey1))
     ax1 = _bboxP(arm)[2]
+    if ax1 <= sR + M["s"] * 0.5:
+        return None
     return soft + arm, int(max(w, ax1 + (we - ex1)))
+
+
+def _be_from_bar(font, M, r):
+    """Б when E's arm can't be found: Ь with T's top bar (copied, not drawn)
+    laid along its top, as wide as E (or Ь)."""
+    soft, w = r
+    sx0, sy0, sx1, sy1 = _bboxP(soft)
+    E, we = _load(font, "E")
+    if E:
+        ex0, ey0, ex1, ey1 = _bboxP(E)
+        x1 = sx0 + (ex1 - ex0)
+        rsb = we - ex1
+    else:
+        x1 = sx1
+        rsb = w - sx1
+    x1 = max(x1, sx1)
+    bar = _part_hbar(font, M, sx0, x1, sy1 - M["bt"], "top", ytop=sy1)
+    if not bar:
+        return None
+    bx1 = _bboxP(bar)[2]
+    return soft + bar, int(max(w, bx1 + max(0, rsb)))
 
 
 def make_hard(font, M):         # Ъ  ← left arm of T + Ь
@@ -3265,9 +3309,17 @@ def glyph_outline(data, cp):
     font = TTFont(io.BytesIO(data))
     cmap = font.getBestCmap()
     gname = cmap.get(cp)
-    if not gname:
-        return None
     gs = font.getGlyphSet()
+    if not gname:
+        # a letter the font doesn't have: an empty glyph to draw into, as wide
+        # as a typical letter of the same case
+        lower = chr(cp).islower()
+        ref = next((cmap[c] for c in ((ord("n"), ord("o"), ord("H")) if lower else (ord("H"), ord("O"), ord("n")))
+                    if c in cmap and cmap[c] in gs), None)
+        w = gs[ref].width if ref else int(font["head"].unitsPerEm * 0.6)
+        out = _metrics(font)
+        out.update({"cp": cp, "width": w, "contours": [], "missing": True})
+        return out
     pen = DecomposingRecordingPen(gs)
     gs[gname].draw(pen)
     contours, cur = [], None
@@ -3441,9 +3493,13 @@ def apply_edits(data, edits):
     follow = {}
     for gname, (cp, *_r) in done.items():
         g0 = best.get(cp)
-        if g0 is None:
-            continue
         lo = _lower_of(cp)
+        if g0 is None:
+            # a capital drawn from nothing: a lowercase that is missing too
+            # gets the same drawing rather than staying empty
+            if lo and lo not in edited_cps and lo not in best:
+                follow[lo] = gname
+            continue
         if lo and lo not in edited_cps and lo in best:
             if best[lo] == g0:
                 follow[lo] = gname
@@ -3456,7 +3512,7 @@ def apply_edits(data, edits):
             for gname, (cp, *_r) in done.items():
                 t.cmap[cp] = gname
             for ocp, gname in follow.items():
-                if ocp in t.cmap:
+                if ocp in t.cmap or ocp not in best:
                     t.cmap[ocp] = gname
     for tag in ("hdmx", "LTSH", "VDMX", "DSIG", "HVAR", "VVAR"):
         if tag in font:
@@ -3920,7 +3976,7 @@ def font_info(data):
   $('howEdit').addEventListener('click', () => {
     $('howModal').hidden = true;
     const cp = howCh.codePointAt(0);
-    if (E) { if (E.present.has(cp)) selectLetter(cp); } else openEditor(cp);
+    if (E) selectLetter(cp); else openEditor(cp);
   });
   function showCustom(ch, srcs, text) {
     showHow(ch, { make: true });
@@ -4259,6 +4315,18 @@ def font_info(data):
   const key = (c, p) => c + ',' + p;
   const unkey = k => k.split(',').map(Number);
 
+  // a lowercase drawn exactly like its capital (or missing along with it)
+  // shows the capital's hand edit, as the built font does
+  function followsUpper(cp) {
+    const up = upperOf(cp);
+    if (up === cp || !edits[up]) return false;
+    if (!E.base[up]) E.base[up] = pyOutline(up);
+    if (!E.base[cp]) E.base[cp] = pyOutline(cp);
+    const a = E.base[up], b = E.base[cp];
+    if (!a || !b) return false;
+    if (a.missing && b.missing) return true;
+    return !a.missing && !b.missing && a.width === b.width && JSON.stringify(a.contours) === JSON.stringify(b.contours);
+  }
   function upperOf(cp) {
     if (cp >= 0x0430 && cp <= 0x044F) return cp - 0x20;
     if (cp >= 0x0450 && cp <= 0x045F) return cp - 0x50;
@@ -4275,7 +4343,7 @@ def font_info(data):
     const present = new Set(JSON.parse(py.runPython('json.dumps(mnfont.present_cps(bytes(bb_js.to_py()), json.loads(cps_js)))')));
     E = { cps, present, work: {}, base: {}, cp: null, tool: 'move', sel: new Set(), draft: null, drag: null,
           view: null, space: false, touches: new Map(), snapY: null };
-    if (!present.has(cp)) cp = cps.find(c => present.has(c));
+    if (!cps.includes(cp)) cp = cps.find(c => present.has(c)) || cps[0];
     if (cp == null) { E = null; return; }
     lastEdFocus = document.activeElement;
     $('edModal').hidden = false;
@@ -4289,11 +4357,7 @@ def font_info(data):
       // a lowercase drawn exactly like its capital follows the capital's edit
       let src = edits[cp] ? edits[cp] : E.base[cp];
       const up = upperOf(cp);
-      if (!edits[cp] && up !== cp && edits[up]) {
-        if (!E.base[up]) E.base[up] = pyOutline(up);
-        const a = E.base[up], b = E.base[cp];
-        if (a && b && a.width === b.width && JSON.stringify(a.contours) === JSON.stringify(b.contours)) src = edits[up];
-      }
+      if (!edits[cp] && followsUpper(cp)) src = edits[upperOf(cp)];
       E.work[cp] = { width: src.width, contours: clone(src.contours), touched: false, undo: [], redo: [] };
     }
     E.cp = cp; E.sel = new Set(); E.draft = null; E.view = null; E.hov = null;
@@ -4305,7 +4369,7 @@ def font_info(data):
     E.cps.forEach(cp => {
       const b = document.createElement('button'); b.type = 'button';
       b.textContent = String.fromCodePoint(cp);
-      b.disabled = !E.present.has(cp);
+      if (!E.present.has(cp) && !edits[cp] && !(E.work[cp] && E.work[cp].contours.length) && !(E.present.has(cp) === false && edits[upperOf(cp)] && !E.present.has(upperOf(cp)))) { b.classList.add('miss'); b.title = 'Энэ үсэг фонтод алга — өөрөө зурж нэмж болно'; }
       b.setAttribute('aria-pressed', cp === E.cp);
       if ((E.work[cp] && E.work[cp].touched) || edits[cp]) b.classList.add('mod');
       b.onclick = () => selectLetter(cp);
@@ -4535,6 +4599,7 @@ def font_info(data):
     }
     renderMini();
     $('edWidth').textContent = 'Өргөн ' + Math.round(w.width);
+    $('edEmpty').hidden = !(E.present && !E.present.has(E.cp) && !w.contours.length && !E.draft);
     const sel = [...E.sel].map(unkey);
     if (sel.length === 1) { const p = w.contours[sel[0][0]][sel[0][1]]; $('edRead').textContent = 'x ' + p[0] + '   y ' + p[1]; }
     else $('edRead').textContent = sel.length ? sel.length + ' цэг сонгосон' : '';

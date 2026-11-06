@@ -1786,10 +1786,20 @@ def _soft(font):                # Ь ← P flipped vertically
     return _tx(P, (1, 0, 0, -1, 0, y0 + y1)), w
 
 
-def make_be(font, M):           # Б  ← Ь + top arm of E
+def make_be(font, M):           # Б  ← Ь + top arm of E (or T's top bar)
     r = _soft(font)
+    if not r:
+        return None
+    try:
+        got = _be_from_e(font, M, r)
+    except Exception:
+        got = None
+    return got or _be_from_bar(font, M, r)
+
+
+def _be_from_e(font, M, r):
     E, we = _load(font, "E")
-    if not r or not E:
+    if not E:
         return None
     soft, w = r
     ex0, ey0, ex1, ey1 = _bboxP(E)
@@ -1802,6 +1812,8 @@ def make_be(font, M):           # Б  ← Ь + top arm of E
         return None
     arm_bot = hv[-2]
     arm = _cut(_cut(E, "y", arm_bot - 0.5, True), "x", eR, True)
+    if not arm:
+        return None
     sx0, sy0, sx1, sy1 = _bboxP(soft)
     h2 = _hitsP(soft, "y", sy1 - M["bt"] * 0.5)
     if len(h2) < 2:
@@ -1809,7 +1821,30 @@ def make_be(font, M):           # Б  ← Ь + top arm of E
     sR = h2[1]
     arm = _tx(arm, (1, 0, 0, 1, sR - eR, sy1 - ey1))
     ax1 = _bboxP(arm)[2]
+    if ax1 <= sR + M["s"] * 0.5:
+        return None
     return soft + arm, int(max(w, ax1 + (we - ex1)))
+
+
+def _be_from_bar(font, M, r):
+    """Б when E's arm can't be found: Ь with T's top bar (copied, not drawn)
+    laid along its top, as wide as E (or Ь)."""
+    soft, w = r
+    sx0, sy0, sx1, sy1 = _bboxP(soft)
+    E, we = _load(font, "E")
+    if E:
+        ex0, ey0, ex1, ey1 = _bboxP(E)
+        x1 = sx0 + (ex1 - ex0)
+        rsb = we - ex1
+    else:
+        x1 = sx1
+        rsb = w - sx1
+    x1 = max(x1, sx1)
+    bar = _part_hbar(font, M, sx0, x1, sy1 - M["bt"], "top", ytop=sy1)
+    if not bar:
+        return None
+    bx1 = _bboxP(bar)[2]
+    return soft + bar, int(max(w, bx1 + max(0, rsb)))
 
 
 def make_hard(font, M):         # Ъ  ← left arm of T + Ь
@@ -2973,9 +3008,17 @@ def glyph_outline(data, cp):
     font = TTFont(io.BytesIO(data))
     cmap = font.getBestCmap()
     gname = cmap.get(cp)
-    if not gname:
-        return None
     gs = font.getGlyphSet()
+    if not gname:
+        # a letter the font doesn't have: an empty glyph to draw into, as wide
+        # as a typical letter of the same case
+        lower = chr(cp).islower()
+        ref = next((cmap[c] for c in ((ord("n"), ord("o"), ord("H")) if lower else (ord("H"), ord("O"), ord("n")))
+                    if c in cmap and cmap[c] in gs), None)
+        w = gs[ref].width if ref else int(font["head"].unitsPerEm * 0.6)
+        out = _metrics(font)
+        out.update({"cp": cp, "width": w, "contours": [], "missing": True})
+        return out
     pen = DecomposingRecordingPen(gs)
     gs[gname].draw(pen)
     contours, cur = [], None
@@ -3149,9 +3192,13 @@ def apply_edits(data, edits):
     follow = {}
     for gname, (cp, *_r) in done.items():
         g0 = best.get(cp)
-        if g0 is None:
-            continue
         lo = _lower_of(cp)
+        if g0 is None:
+            # a capital drawn from nothing: a lowercase that is missing too
+            # gets the same drawing rather than staying empty
+            if lo and lo not in edited_cps and lo not in best:
+                follow[lo] = gname
+            continue
         if lo and lo not in edited_cps and lo in best:
             if best[lo] == g0:
                 follow[lo] = gname
@@ -3164,7 +3211,7 @@ def apply_edits(data, edits):
             for gname, (cp, *_r) in done.items():
                 t.cmap[cp] = gname
             for ocp, gname in follow.items():
-                if ocp in t.cmap:
+                if ocp in t.cmap or ocp not in best:
                     t.cmap[ocp] = gname
     for tag in ("hdmx", "LTSH", "VDMX", "DSIG", "HVAR", "VVAR"):
         if tag in font:
