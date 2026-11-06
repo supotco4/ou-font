@@ -194,6 +194,14 @@
   nav .links{display:flex;align-items:center;gap:10px}
   nav .navlink{font-size:13px;color:var(--soft);text-decoration:none;padding:6px 12px;border-radius:99px}
   nav .navlink:hover{color:var(--ink);background:var(--surface)}
+  nav .libbtn{display:inline-flex;align-items:center;gap:9px;font:600 15px/1 Inter,sans-serif;color:var(--accent-ink);background:var(--accent);
+    text-decoration:none;padding:7px 18px 7px 7px;border-radius:99px;box-shadow:0 6px 20px -6px var(--accent);transition:transform .15s, box-shadow .15s}
+  nav .libbtn:hover{transform:translateY(-1px);box-shadow:0 10px 26px -8px var(--accent)}
+  nav .libbtn:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  nav .libbtn .ic{width:30px;height:30px;border-radius:99px;background:rgba(255,255,255,.22);display:grid;place-items:center;font:700 13px/1 "Unbounded MN",Unbounded,sans-serif;letter-spacing:-.03em}
+  nav .libbtn, nav .navlink{white-space:nowrap}
+  @media (max-width:520px){ nav .libbtn{font-size:14px;padding:5px 14px 5px 5px;gap:7px} nav .libbtn .ic{width:26px;height:26px;font-size:11px} nav .links{gap:4px} nav .navlink{padding:6px 8px} }
+  @media (max-width:430px){ nav .brand-name{display:none} }
 
   .howbtn{font:inherit;font-size:11px;color:var(--accent);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
   .howchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
@@ -306,9 +314,9 @@
 <body>
 <div class="wrap">
   <nav>
-    <div class="brand"><div class="logo">ӨҮ</div>Өү</div>
+    <div class="brand"><div class="logo">ӨҮ</div><span class="brand-name">Өү</span></div>
     <div class="links">
-      <a class="navlink" href="/fontsan/">Фонт сан</a>
+      <a class="libbtn" href="/fontsan/"><span class="ic" aria-hidden="true">Aa</span>Фонт сан</a>
       <a class="navlink" href="/sanal">Санал хүсэлт</a>
       <div class="engine loading" id="engine"><span class="dot"></span><span id="engineText">Бэлтгэж байна</span></div>
     </div>
