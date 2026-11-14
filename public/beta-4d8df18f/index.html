@@ -298,8 +298,15 @@
   .ed .tools svg{width:15px;height:15px;fill:currentColor}
   .ed .canvas{background:var(--tile);border-radius:18px;flex:1 1 auto;min-height:260px;height:58vh;position:relative;overflow:hidden;outline:0}
   .ed .canvas.pan{cursor:grab}.ed .canvas.panning{cursor:grabbing}
-  .ed .canvas.t-draw svg,.ed .canvas.t-rect svg,.ed .canvas.t-ellipse svg,.ed .canvas.t-add svg{cursor:crosshair}
+  .ed .canvas.t-draw svg,.ed .canvas.t-rect svg,.ed .canvas.t-ellipse svg,.ed .canvas.t-add svg,.ed .canvas.t-crop svg{cursor:crosshair}
   .ed .shapewrap{position:relative;display:flex}
+  .ed .frommenu{position:absolute;top:calc(100% + 6px);left:0;z-index:5;background:var(--surface);border:1px solid var(--line2);border-radius:14px;box-shadow:var(--shadow);padding:10px;width:min(380px,86vw);max-height:300px;overflow:auto}
+  .ed .frommenu[hidden]{display:none}
+  .ed .frommenu p{font-size:12px;color:var(--soft);margin:2px 2px 8px;line-height:1.4}
+  .ed .frommenu .fg{display:grid;grid-template-columns:repeat(auto-fill,minmax(34px,1fr));gap:4px;margin-bottom:8px}
+  .ed .frommenu .fg button{height:36px;border-radius:9px;border:1px solid var(--line);background:var(--tile);color:var(--ink);font-size:17px;cursor:pointer;padding:0}
+  .ed .frommenu .fg button:hover,.ed .frommenu .fg button:focus-visible{border-color:var(--accent);outline:none}
+  .ed .frommenu b{display:block;font-size:11.5px;color:var(--faint);font-weight:600;margin:2px 2px 4px}
   .ed .shapemenu{position:absolute;top:calc(100% + 6px);left:0;z-index:5;background:var(--surface);border:1px solid var(--line2);border-radius:14px;box-shadow:var(--shadow);padding:6px;display:flex;flex-direction:column;gap:2px;min-width:250px}
   .ed .shapemenu[hidden]{display:none}
   .ed .shapemenu button{justify-content:flex-start;padding:10px 12px !important;border-radius:10px !important;width:100%;text-align:left}
@@ -509,6 +516,13 @@
             <button type="button" role="menuitemradio" data-shape="ellipse" aria-checked="false"><svg viewBox="0 0 16 16"><ellipse cx="8" cy="8" rx="5.8" ry="4.8" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>Дугуй <small>O · Shift = тойрог</small></button>
           </div>
         </span>
+      </div>
+      <div class="seg">
+        <span class="shapewrap">
+          <button type="button" id="tFrom" aria-haspopup="menu" aria-expanded="false" title="Өөр үсгийн хэлбэрийг энэ үсэг рүү нэмэх — хэрэгтэй хэсгийг нь «Тайрах»-аар үлдээнэ">⇲ Үсгээс авах ▾</button>
+          <div class="frommenu" id="fromMenu" role="menu" aria-label="Аль үсгээс авах" hidden></div>
+        </span>
+        <button type="button" id="tCrop" aria-pressed="false" title="Тайрах (K): сонгосон дүрсүүдээс чирсэн хүрээн доторх хэсгийг л үлдээнэ">✂ Тайрах</button>
       </div>
       <div class="seg">
         <button type="button" id="tCurve" disabled title="Сонгосон цэгийн дараах шулууныг муруй болгох">⌒ Муруй</button>
@@ -2096,7 +2110,12 @@ def make_be(font, M):           # Б  ← Ь + top arm of E (or T's top bar)
         got = _be_from_e(font, M, r)
     except Exception:
         got = None
-    return got or _be_from_bar(font, M, r)
+    if got:
+        return got
+    got = _be_from_bar(font, M, r)
+    if got:
+        _note(0x0411, ["P", "T"], "P-г урвуулж Ь болгоод, дээр нь T-гийн дээд зураасыг тавьсан.")
+    return got
 
 
 def _be_from_e(font, M, r):
@@ -2487,7 +2506,31 @@ def make_u(font, M):            # У  ← V pressed into the upper part, right a
     return top + [tail], w
 
 
+def make_ze(font, M):           # З  ← B without its stem (when the font has no digit 3)
+    B, w = _load(font, "B")
+    if not B:
+        return None
+    x0, y0, x1, y1 = _bboxP(B)
+    rights = []
+    for f in (0.2, 0.3, 0.7, 0.8):     # through the counters: stem, then bowl
+        hs = _hitsP(B, "y", y0 + (y1 - y0) * f)
+        if len(hs) >= 4:
+            rights.append(hs[1])
+    if not rights:
+        return None
+    cut = max(rights) + 0.5
+    if cut >= x0 + (x1 - x0) * 0.6:
+        return None
+    body = _cut(B, "x", cut, True)
+    if not body:
+        return None
+    bx0 = _bboxP(body)[0]
+    body = _tx(body, (1, 0, 0, 1, x0 - bx0, 0))
+    return body, int(w - (bx0 - x0))
+
+
 CONSTRUCT = {
+    0x0417: make_ze,
     0x0427: make_che, 0x0428: make_sha, 0x0429: make_shcha, 0x0426: make_tse, 0x0416: make_zhe,
     0x0424: make_ef, 0x042E: make_yu, 0x0414: lambda f, M: make_de_pe(f, M) or make_de(f, M), 0x041B: lambda f, M: make_el_yt(f, M) or make_el(f, M), 0x0411: make_be, 0x042A: make_hard,
     0x042D: make_e_rev, 0x0401: make_yo, 0x0423: make_u, 0x0419: make_short_i, 0x041F: make_pe, 0x042B: make_yeru,
@@ -2980,8 +3023,18 @@ def _rename(font, family):
     return ps
 
 
+# how a letter was actually made when it differs from the usual recipe
+# ({code point: [sources, text]}); filled by build(), read by the page
+HOW_NOTES = {}
+
+
+def _note(cp, srcs, text):
+    HOW_NOTES[cp] = [list(srcs), text]
+
+
 def build(data, opts):
     """data: font bytes. opts: dict. Returns (bytes, ext, report)."""
+    HOW_NOTES.clear()
     font = TTFont(io.BytesIO(data))
     flavor = font.flavor
     font.flavor = None
@@ -3527,6 +3580,13 @@ def build_all(data, opts, edits):
     """build() and then the hand edits. Returns (final bytes, base bytes, ext)."""
     out, ext, rep = build(data, opts)
     base = out if out is not None else data
+    mp = (opts or {}).get("map") or {}
+    if mp and not (opts or {}).get("onlyOU"):
+        have = TTFont(io.BytesIO(base)).getBestCmap() or {}
+        for k, v in mp.items():
+            cp = int(k)
+            if v and cp not in have:
+                _note(cp, [], "FAIL")
     if edits:
         out = apply_edits(base, edits)
         ext = "otf" if out[:4] == b"OTTO" else "ttf"
@@ -3874,6 +3934,7 @@ def font_info(data):
     const o = res.get(0); const bytes = bytesFromPy(o); o.destroy();
     const b = res.get(1); baseBytes = bytesFromPy(b); b.destroy();
     const ext = res.get(2); res.destroy();
+    try { howNotes = JSON.parse(py.runPython('json.dumps(mnfont.HOW_NOTES)')) || {}; } catch (e) { howNotes = {}; }
     return { bytes, ext };
   }
 
@@ -3922,6 +3983,7 @@ def font_info(data):
 
   // ----- "how was this letter made?" -----
   const RECIPES = {
+    'З': [['B'], 'Фонтод «3» тоо байхгүй тул B үсгийн ишийг хасаж, хоёр гэдсийг нь З болгосон.'],
     'Ч': [['H'], 'H үсгийн зүүн доод хөлийг хасаж угсарсан.'],
     'Ш': [['U', 'H'], 'U-г голоор нь хувааж, завсрыг U-гийн өөрийн ёроолоор холбоод, дунд нь H-ийн хөлийн дээд хэсгийг иш болгосон.'],
     'Щ': [['U', 'H'], 'Ш-ийн адилаар угсраад, баруун доод буланд H-ийн хөлийн үзүүрийг сүүл болгож залгасан.'],
@@ -3996,8 +4058,13 @@ def font_info(data):
     return m;
   }
   const TFBADGE = { mirror: '↔', flip: '↕', rot: '⟲' };
+  let howNotes = {};
   function howData(up) { // {srcs, badge, text} for a generated letter, by its capital's code point
     const ch = String.fromCodePoint(up);
+    const note = howNotes[up];
+    if (note) return note[1] === 'FAIL'
+      ? { srcs: [], text: 'Энэ үсгийг фонтын хэсгүүдээс автоматаар үүсгэж чадсангүй. «Өөрөө засах» дарж зурж, эсвэл өөр үсгээс хуулж нэмээрэй.' }
+      : { srcs: note[0], text: note[1] };
     if (up === 0x04E8) return { srcs: ['O'], text: 'O үсгийн дотор хөндлөн зураас нэмсэн.' };
     if (up === 0x04AE) {
       const k = info && info.ue && info.ue[0];
@@ -4401,10 +4468,11 @@ def font_info(data):
     draw: 'Товшвол шулуун цэг, дараад чирвэл муруй цэг тавина · эхний цэг дээр дарж эсвэл Enter дарж хаана · Esc — болих.',
     rect: 'Чирж дөрвөлжин зурна · Shift дарвал тэгш дөрвөлжин.',
     ellipse: 'Чирж дугуй зурна · Shift дарвал тойрог.',
+    crop: 'Үлдээх хэсгээ хүрээгээр чирж тэмдэглэ · сонгосон дүрсүүдээс (сонгоогүй бол бүгдээс) хүрээн доторх хэсэг л үлдэнэ.',
   };
   function setTool(t) {
     E.tool = t; E.draft = t === 'draw' ? [] : null; E.hover = null;
-    [['tMove', 'move'], ['tAdd', 'add']].forEach(([id, n]) => $(id).setAttribute('aria-pressed', t === n));
+    [['tMove', 'move'], ['tAdd', 'add'], ['tCrop', 'crop']].forEach(([id, n]) => $(id).setAttribute('aria-pressed', t === n));
     const shape = ['draw', 'rect', 'ellipse'].includes(t);
     $('tDraw').setAttribute('aria-pressed', shape);
     if (shape) {
@@ -4593,7 +4661,7 @@ def font_info(data):
         el('rect', { x: a.p[0] - R0, y: a.p[1] - R0, width: R0 * 2, height: R0 * 2, class: 'pt' + (i === 0 ? ' sel' : '') }, G);
       });
     }
-    if (E.drag && ['marq', 'rect', 'ellipse'].includes(E.drag.kind) && E.drag.cur) {
+    if (E.drag && ['marq', 'rect', 'ellipse', 'crop'].includes(E.drag.kind) && E.drag.cur) {
       const [x0, y0, x1, y1] = dragBox(E.drag);
       if (E.drag.kind === 'ellipse') el('ellipse', { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, rx: (x1 - x0) / 2, ry: (y1 - y0) / 2, class: 'draft' }, G);
       else el('rect', { x: x0, y: y0, width: x1 - x0, height: y1 - y0, class: E.drag.kind === 'rect' ? 'draft' : 'marq' }, G);
@@ -4712,7 +4780,7 @@ def font_info(data):
       return;
     }
     svgEl.setPointerCapture(ev.pointerId);
-    if (E.tool === 'rect' || E.tool === 'ellipse') { E.drag = { kind: E.tool, start: pt, cur: null }; return; }
+    if (E.tool === 'rect' || E.tool === 'ellipse' || E.tool === 'crop') { E.drag = { kind: E.tool, start: pt, cur: null }; return; }
     if (ds.w) { push(); E.drag = { kind: 'w' }; return; }
     if (ds.p != null) {
       const k = key(+ds.c, +ds.p);
@@ -4775,8 +4843,8 @@ def font_info(data):
     }
     if (d.kind === 'w') { W().width = Math.max(0, pt[0]); render(); return; }
     if (d.kind === 'move') { doMove(pt, ev.shiftKey); return; }
-    if (d.kind === 'marq' || d.kind === 'rect' || d.kind === 'ellipse') {
-      d.cur = pt; d.square = ev.shiftKey;
+    if (d.kind === 'marq' || d.kind === 'rect' || d.kind === 'ellipse' || d.kind === 'crop') {
+      d.cur = pt; d.square = d.kind !== 'crop' && ev.shiftKey;
       if (d.kind === 'marq') {
         const x0 = Math.min(d.start[0], pt[0]), x1 = Math.max(d.start[0], pt[0]), y0 = Math.min(d.start[1], pt[1]), y1 = Math.max(d.start[1], pt[1]);
         E.sel = new Set(d.add ? d.prev : []);
@@ -4800,8 +4868,27 @@ def font_info(data):
         setTool('move');
       }
     }
+    if (d.kind === 'crop' && d.cur) cropTo(dragBox(d));
     if (d.kind === 'move' && d.pushed) fixDirs();
     render();
+  }
+  // keep only what lies inside the box, of the selected shapes (or of all of them)
+  function cropTo([x0, y0, x1, y1]) {
+    if (x1 - x0 < 2 || y1 - y0 < 2) return;
+    const cs = W().contours;
+    let S = fullContours();
+    if (!S.length) S = [...new Set([...E.sel].map(k => unkey(k)[0]))];
+    if (!S.length) S = cs.map((_, i) => i);
+    if (!S.length) return;
+    const box = [[x0, y0, 'on'], [x1, y0, 'on'], [x1, y1, 'on'], [x0, y1, 'on']];
+    let res;
+    try { res = BOOL.intersect(S.map(i => cs[i]), [box]); } catch (e) { $('edHint').textContent = 'Энэ дүрсүүд дээр тайрч чадсангүй.'; return; }
+    push();
+    const used = new Set(S), keep = cs.filter((_, i) => !used.has(i));
+    W().contours = keep.concat(res);
+    E.sel = new Set(); for (let ci = keep.length; ci < W().contours.length; ci++) selectContour(ci, true);
+    fixDirs(); setTool('move');
+    $('edHint').textContent = res.length ? 'Тайрлаа — үлдсэн хэсэг сонгогдсон байгаа тул чирж байранд нь тавина уу. Буцаах бол Ctrl+Z.' : 'Хүрээн дотор юу ч байсангүй.';
   }
   svgEl.addEventListener('pointerup', endDrag);
   svgEl.addEventListener('pointercancel', endDrag);
@@ -4925,6 +5012,45 @@ def font_info(data):
   });
   document.addEventListener('click', () => { if (!$('shapeMenu').hidden) toggleShapeMenu(false); });
   $('tDel').onclick = del;
+  $('tCrop').onclick = () => { setTool(E.tool === 'crop' ? 'move' : 'crop'); render(); };
+  // ----- take shapes from another letter -----
+  function fromLetters() {
+    const groups = [['Том латин', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'], ['Жижиг латин', 'abcdefghijklmnopqrstuvwxyz'], ['Тоо', '0123456789'],
+      ['Кирилл', [...E.present].filter(c => c >= 0x0400 && c <= 0x04FF).sort((a, b) => a - b).map(c => String.fromCodePoint(c)).join('')]];
+    const m = $('fromMenu'); m.innerHTML = '';
+    m.appendChild(document.createElement('p')).textContent = 'Сонгосон үсгийн хэлбэр энэ үсэг дээр нэмэгдэнэ. Дараа нь «Тайрах»-аар хэрэгтэй хэсгийг нь үлдээгээд, чирж байранд нь тавина.';
+    groups.forEach(([name, chars]) => {
+      if (!chars) return;
+      m.appendChild(document.createElement('b')).textContent = name;
+      const g = document.createElement('div'); g.className = 'fg';
+      [...chars].forEach(ch => {
+        const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.textContent = ch;
+        if (currentFace) b.style.fontFamily = '"' + currentFace.family + '", Inter, sans-serif';
+        b.onclick = e => { e.stopPropagation(); toggleFrom(false); takeFrom(ch.codePointAt(0)); };
+        g.appendChild(b);
+      });
+      m.appendChild(g);
+    });
+  }
+  function toggleFrom(open) {
+    const m = $('fromMenu'); open = open == null ? m.hidden : open;
+    if (open) fromLetters();
+    m.hidden = !open; $('tFrom').setAttribute('aria-expanded', open);
+    if (open) { const f = m.querySelector('button'); if (f) f.focus(); }
+  }
+  function takeFrom(cp) {
+    const o = pyOutline(cp);
+    if (!o || o.missing || !o.contours.length) { $('edHint').textContent = '«' + String.fromCodePoint(cp) + '» үсэг энэ фонтод алга.'; return; }
+    push();
+    const start = W().contours.length;
+    o.contours.forEach(c => W().contours.push(c.map(p => [p[0], p[1], p[2]])));
+    E.sel = new Set(); for (let ci = start; ci < W().contours.length; ci++) selectContour(ci, true);
+    fixDirs(); setTool('crop'); render();
+    $('edHint').textContent = '«' + String.fromCodePoint(cp) + '»-г нэмлээ (сонгогдсон). Одоо үлдээх хэсгээ хүрээгээр чирж тэмдэглэ — бусад нь арилна.';
+  }
+  $('tFrom').onclick = e => { e.stopPropagation(); toggleFrom(); };
+  $('fromMenu').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); toggleFrom(false); $('tFrom').focus(); } });
+  document.addEventListener('click', e => { if (!$('fromMenu').hidden && !$('fromMenu').contains(e.target)) toggleFrom(false); });
   $('tDup').onclick = duplicate;
   $('tUnite').onclick = () => boolOp('union');
   $('tSub').onclick = () => boolOp('sub');
@@ -4983,7 +5109,7 @@ def font_info(data):
     const dirs = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
     if (dirs[k] && E.sel.size) { ev.preventDefault(); const s = ev.shiftKey ? 10 : 1; nudge(dirs[k][0] * s, dirs[k][1] * s); return; }
     if (mod || ev.altKey) return;
-    const tools = { v: 'move', a: 'add', p: 'draw', r: 'rect', o: 'ellipse' };
+    const tools = { v: 'move', a: 'add', p: 'draw', r: 'rect', o: 'ellipse', k: 'crop' };
     if (tools[lk]) { ev.preventDefault(); setTool(tools[lk]); if (lk === 'p') E.sel = new Set(); render(); return; }
     if (k === '+' || k === '=') { ev.preventDefault(); zoomCenter(1.25); return; }
     if (k === '-' || k === '_') { ev.preventDefault(); zoomCenter(0.8); return; }

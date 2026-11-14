@@ -1794,7 +1794,12 @@ def make_be(font, M):           # Б  ← Ь + top arm of E (or T's top bar)
         got = _be_from_e(font, M, r)
     except Exception:
         got = None
-    return got or _be_from_bar(font, M, r)
+    if got:
+        return got
+    got = _be_from_bar(font, M, r)
+    if got:
+        _note(0x0411, ["P", "T"], "P-г урвуулж Ь болгоод, дээр нь T-гийн дээд зураасыг тавьсан.")
+    return got
 
 
 def _be_from_e(font, M, r):
@@ -2185,7 +2190,31 @@ def make_u(font, M):            # У  ← V pressed into the upper part, right a
     return top + [tail], w
 
 
+def make_ze(font, M):           # З  ← B without its stem (when the font has no digit 3)
+    B, w = _load(font, "B")
+    if not B:
+        return None
+    x0, y0, x1, y1 = _bboxP(B)
+    rights = []
+    for f in (0.2, 0.3, 0.7, 0.8):     # through the counters: stem, then bowl
+        hs = _hitsP(B, "y", y0 + (y1 - y0) * f)
+        if len(hs) >= 4:
+            rights.append(hs[1])
+    if not rights:
+        return None
+    cut = max(rights) + 0.5
+    if cut >= x0 + (x1 - x0) * 0.6:
+        return None
+    body = _cut(B, "x", cut, True)
+    if not body:
+        return None
+    bx0 = _bboxP(body)[0]
+    body = _tx(body, (1, 0, 0, 1, x0 - bx0, 0))
+    return body, int(w - (bx0 - x0))
+
+
 CONSTRUCT = {
+    0x0417: make_ze,
     0x0427: make_che, 0x0428: make_sha, 0x0429: make_shcha, 0x0426: make_tse, 0x0416: make_zhe,
     0x0424: make_ef, 0x042E: make_yu, 0x0414: lambda f, M: make_de_pe(f, M) or make_de(f, M), 0x041B: lambda f, M: make_el_yt(f, M) or make_el(f, M), 0x0411: make_be, 0x042A: make_hard,
     0x042D: make_e_rev, 0x0401: make_yo, 0x0423: make_u, 0x0419: make_short_i, 0x041F: make_pe, 0x042B: make_yeru,
@@ -2678,8 +2707,18 @@ def _rename(font, family):
     return ps
 
 
+# how a letter was actually made when it differs from the usual recipe
+# ({code point: [sources, text]}); filled by build(), read by the page
+HOW_NOTES = {}
+
+
+def _note(cp, srcs, text):
+    HOW_NOTES[cp] = [list(srcs), text]
+
+
 def build(data, opts):
     """data: font bytes. opts: dict. Returns (bytes, ext, report)."""
+    HOW_NOTES.clear()
     font = TTFont(io.BytesIO(data))
     flavor = font.flavor
     font.flavor = None
@@ -3225,6 +3264,13 @@ def build_all(data, opts, edits):
     """build() and then the hand edits. Returns (final bytes, base bytes, ext)."""
     out, ext, rep = build(data, opts)
     base = out if out is not None else data
+    mp = (opts or {}).get("map") or {}
+    if mp and not (opts or {}).get("onlyOU"):
+        have = TTFont(io.BytesIO(base)).getBestCmap() or {}
+        for k, v in mp.items():
+            cp = int(k)
+            if v and cp not in have:
+                _note(cp, [], "FAIL")
     if edits:
         out = apply_edits(base, edits)
         ext = "otf" if out[:4] == b"OTTO" else "ttf"
@@ -3474,6 +3520,7 @@ def font_info(data):
 
   // ----- "how was this letter made?" -----
   const RECIPES = {
+    'З': [['B'], 'Фонтод «3» тоо байхгүй тул B үсгийн ишийг хасаж, хоёр гэдсийг нь З болгосон.'],
     'Ч': [['H'], 'H үсгийн зүүн доод хөлийг хасаж угсарсан.'],
     'Ш': [['U', 'H'], 'U-г голоор нь хувааж, завсрыг U-гийн өөрийн ёроолоор холбоод, дунд нь H-ийн хөлийн дээд хэсгийг иш болгосон.'],
     'Щ': [['U', 'H'], 'Ш-ийн адилаар угсраад, баруун доод буланд H-ийн хөлийн үзүүрийг сүүл болгож залгасан.'],

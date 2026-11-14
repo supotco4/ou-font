@@ -1,18 +1,22 @@
 // GET  /api/lib — the public font library (no font data, no IPs)
 // POST /api/lib {nickname, title, note, changes, license: true, font: base64 WOFF,
 //               parent_id?, request_id?} — with parent_id it is a new version of that font
-import { json, ipHash } from "../../_lib/util.js";
+import { json, ipHash, sha256Hex } from "../../_lib/util.js";
 import { LINKY, clean } from "../../_lib/mod.js";
 
 const MAX = 1900000;
 
-export async function onRequestGet({ env }) {
+export async function onRequestGet({ request, env }) {
+  // with x-owner-key, fonts saved with that key come back marked mine: 1
+  const ok = request.headers.get("x-owner-key") || "";
+  const oh = ok.length >= 16 ? await sha256Hex(ok) : "-";
   const { results } = await env.DB.prepare(
     `SELECT f.id, f.created_at, f.nickname, f.title, f.note, f.changes, f.size, f.parent_id, substr(f.sha256, 1, 12) AS v,
+            (f.owner_hash = ?1) AS mine,
             (SELECT COUNT(*) FROM lib_comments c WHERE c.font_id = f.id AND c.status = 'public' AND COALESCE(c.kind, 'comment') = 'comment') AS comments,
             (SELECT COUNT(*) FROM lib_comments c WHERE c.font_id = f.id AND c.status = 'public' AND c.kind = 'request' AND c.fixed_font_id IS NULL) AS requests
-       FROM lib_fonts f WHERE f.status = 'public' ORDER BY f.id DESC LIMIT 200`
-  ).all();
+       FROM lib_fonts f WHERE f.status = 'public' ORDER BY f.id DESC LIMIT 300`
+  ).bind(oh).all();
   return json({ ok: true, items: results || [] });
 }
 
@@ -58,14 +62,32 @@ export async function onRequestPost({ request, env }) {
   if (dup) return json({ ok: true, id: parentId || dup.id, duplicate: true });
 
   const status = [nickname, title, note].some((t) => t && LINKY.test(t)) ? "held" : "public";
+
+  // the uploader's key: lets them edit or remove this font later from the same browser
+  const ownerKey = String(q.owner_key || "").length >= 16 ? String(q.owner_key).slice(0, 80) : crypto.randomUUID() + "-" + crypto.randomUUID();
+  const ownerHash = await sha256Hex(ownerKey);
+
+  // the same person saving the same font again shortly after: replace that save, don't add another
+  const again = await env.DB.prepare(
+    `SELECT id FROM lib_fonts WHERE status IN ('public', 'held') AND title = ? AND COALESCE(parent_id, 0) = ?
+        AND (owner_hash = ? OR (ip_hash IS NOT NULL AND ip_hash = ?)) AND created_at > datetime('now', '-30 minutes')
+      ORDER BY id DESC LIMIT 1`
+  ).bind(title, parentId || 0, ownerHash, ih).first();
+  if (again) {
+    await env.DB.prepare(
+      "UPDATE lib_fonts SET nickname = ?, note = ?, changes = ?, size = ?, sha256 = ?, data = ?, status = ?, owner_hash = ?, updated_at = datetime('now') WHERE id = ?"
+    ).bind(nickname, note, changes, buf.length, sha, buf.buffer, status, ownerHash, again.id).run();
+    return json({ ok: true, id: parentId || again.id, version: again.id, replaced: true, held: status !== "public", owner_key: ownerKey });
+  }
+
   const res = await env.DB.prepare(
-    "INSERT INTO lib_fonts (nickname, title, note, changes, size, sha256, country, ip_hash, status, data, src_sha, family, style, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-  ).bind(nickname, title, note, changes, buf.length, sha, (request.cf && request.cf.country) || null, ih, status, buf.buffer, srcSha, family, style, parentId).run();
+    "INSERT INTO lib_fonts (nickname, title, note, changes, size, sha256, country, ip_hash, status, data, src_sha, family, style, parent_id, owner_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  ).bind(nickname, title, note, changes, buf.length, sha, (request.cf && request.cf.country) || null, ih, status, buf.buffer, srcSha, family, style, parentId, ownerHash).run();
   const newId = res.meta && res.meta.last_row_id;
   if (requestId && parentId && newId && status === "public") {
     await env.DB.prepare(
       "UPDATE lib_comments SET fixed_font_id = ?, fixed_by = ? WHERE id = ? AND font_id = ? AND kind = 'request' AND fixed_font_id IS NULL"
     ).bind(newId, nickname, requestId, parentId).run();
   }
-  return json({ ok: true, id: parentId || newId, version: newId, held: status !== "public" });
+  return json({ ok: true, id: parentId || newId, version: newId, held: status !== "public", owner_key: ownerKey });
 }
