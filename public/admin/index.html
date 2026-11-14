@@ -159,6 +159,17 @@
         else c5.appendChild(button('Нийтлэх', 'ghost', async () => { await act('font', it.id, 'show'); reload(); }));
         const view = el('a', 'btn ghost', 'Харах'); view.href = '/fontsan/f/' + (it.parent_id || it.id); view.target = '_blank'; c5.appendChild(view);
         c5.appendChild(button('Устгах', 'bad', async () => { if (confirm('#' + it.id + ' «' + it.title + '»-г бүр мөсөн устгах уу? Сэтгэгдлүүд нь ч устна.')) { await act('font', it.id, 'delete'); reload(); } }));
+        const fi = el('input'); fi.type = 'file'; fi.accept = '.woff,.woff2'; fi.hidden = true;
+        fi.onchange = async () => {
+          const f = fi.files[0]; if (!f) return;
+          if (!confirm('#' + it.id + ' «' + it.title + '»-ийн файлыг «' + f.name + '»-ээр солих уу?')) { fi.value = ''; return; }
+          const u8 = new Uint8Array(await f.arrayBuffer()); let bin = '';
+          for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+          const j = await api('replace', { method: 'POST', body: JSON.stringify({ id: it.id, font: btoa(bin) }) });
+          alert(j.ok ? 'Файлыг солилоо (' + Math.round(j.size / 1024) + ' KB).' : 'Сольж чадсангүй: ' + (j.error || ''));
+          fi.value = ''; reload();
+        };
+        c5.append(fi, button('Файл солих', 'ghost', async () => fi.click()));
         r.append(c1, c2, c3, c4, c5); tb.appendChild(r);
       });
       if (!tb.children.length) { const r = el('tr'); const c = el('td', 'empty', 'Алга'); c.colSpan = 5; r.appendChild(c); tb.appendChild(r); }

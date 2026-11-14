@@ -3,6 +3,7 @@
 // GET  /api/admin/fonts     every library font, any status
 // GET  /api/admin/comments  every comment / request, any status
 // GET  /api/admin/feedback  every suggestion, any status
+// POST /api/admin/replace   {id, font: base64 WOFF, edited?}
 // POST /api/admin/action    {kind: font|comment|feedback, id, action: hide|show|delete}
 import { json, isAdmin } from "../../_lib/util.js";
 
@@ -41,6 +42,26 @@ export async function onRequest({ request, env, params }) {
       return json({ ok: true, items: results || [] });
     }
     return json({ ok: false, error: "not_found" }, 404);
+  }
+  if (request.method === "POST" && what === "replace") {
+    // {id, font: base64 WOFF} — swap a library font's file (e.g. a repaired copy)
+    let b; try { b = await request.json(); } catch { return json({ ok: false, error: "bad_request" }, 400); }
+    const id = parseInt(b.id, 10);
+    let buf;
+    try { const bin = atob(String(b.font || "")); buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i); }
+    catch { return json({ ok: false, error: "bad_request" }, 400); }
+    const tag = buf.length > 4 ? String.fromCharCode(buf[0], buf[1], buf[2], buf[3]) : "";
+    if (!id || (tag !== "wOFF" && tag !== "wOF2") || buf.length > 1900000) return json({ ok: false, error: "type" }, 415);
+    const dg = await crypto.subtle.digest("SHA-256", buf);
+    const sha = [...new Uint8Array(dg)].map((x) => x.toString(16).padStart(2, "0")).join("");
+    let changes = null;
+    if (b.edited) {
+      const row = await db.prepare("SELECT changes FROM lib_fonts WHERE id = ?").bind(id).first();
+      try { const c = JSON.parse((row && row.changes) || "{}"); c.edited = String(b.edited).slice(0, 80); changes = JSON.stringify(c); } catch (e) {}
+    }
+    await db.prepare("UPDATE lib_fonts SET data = ?, size = ?, sha256 = ?, changes = COALESCE(?, changes), updated_at = datetime('now') WHERE id = ?")
+      .bind(buf.buffer, buf.length, sha, changes, id).run();
+    return json({ ok: true, size: buf.length });
   }
   if (request.method === "POST" && what === "action") {
     let b; try { b = await request.json(); } catch { return json({ ok: false, error: "bad_request" }, 400); }
