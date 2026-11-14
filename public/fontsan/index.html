@@ -3,8 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Фонт сан — Өү</title>
-<meta name="description" content="Өү хэрэгслээр монгол үсэг нэмсэн фонтууд: хэн оруулсан, юуг яаж зассан, сэтгэгдэл.">
+<title>Фонт сан — монгол үсэгтэй болсон фонтууд | Өү</title>
+<meta name="description" content="Өү-гээр монгол үсэг нэмсэн фонтууд: хэн оруулсан, юуг яаж зассан нь харагдана. Үнэгүй татаж, сэтгэгдэл, засах хүсэлт үлдээгээрэй.">
+<link rel="canonical" href="https://ou-font.pages.dev/fontsan/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Өү">
+<meta property="og:title" content="Фонт сан — монгол үсэгтэй болсон фонтууд | Өү">
+<meta property="og:description" content="Өү-гээр монгол үсэг нэмсэн фонтууд: хэн оруулсан, юуг яаж зассан нь харагдана. Үнэгүй татаж, сэтгэгдэл, засах хүсэлт үлдээгээрэй.">
+<meta property="og:url" content="https://ou-font.pages.dev/fontsan/">
+<meta property="og:image" content="https://ou-font.pages.dev/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#f6f6f3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
@@ -46,6 +57,16 @@
   .tools{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
   .tools input{flex:1;min-width:220px;font:15px Inter,sans-serif;padding:12px 16px;border-radius:99px;border:1px solid var(--line2);background:var(--surface);color:var(--ink)}
   .tools input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .minebtn{font:600 14px/1 Inter,sans-serif;padding:12px 16px;border-radius:99px;border:1px solid var(--line2);background:var(--surface);color:var(--ink);cursor:pointer}
+  .minebtn[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .minebtn[hidden]{display:none}
+  .tile .bd.mine{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+  .ownbox{margin:14px 24px 0;padding:14px 16px;border-radius:16px;background:var(--tile);border:1px dashed var(--line2);display:flex;flex-direction:column;gap:8px}
+  .ownbox b{font-size:13.5px}
+  .ownbox input,.ownbox textarea{font:14.5px Inter,sans-serif;padding:9px 12px;border-radius:10px;border:1px solid var(--line2);background:var(--surface);color:var(--ink)}
+  .ownbox textarea{min-height:60px;resize:vertical}
+  .ownbox .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .btn.bad{background:transparent;color:#e5484d;border:1px solid color-mix(in srgb, #e5484d 40%, transparent)}
   .tools .count{color:var(--faint);font-size:13px}
 
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
@@ -146,7 +167,7 @@
 <div class="wrap">
   <nav>
     <a class="brand" href="/"><div class="logo">ӨҮ</div>Өү</a>
-    <div class="links"><a class="navlink" href="/">Фонт нэмэх</a><a class="navlink" href="/sanal">Санал хүсэлт</a></div>
+    <div class="links"><a class="navlink" href="/">Фонт нэмэх</a><a class="navlink" href="/belen/">Бэлэн фонт</a><a class="navlink" href="/sanal/">Санал хүсэлт</a></div>
   </nav>
   <section class="page-h">
     <h1>Фонт <em>сан</em></h1>
@@ -156,6 +177,7 @@
   <div class="tools">
     <label class="sr" for="q">Хайх</label>
     <input id="q" type="search" placeholder="Фонт эсвэл хүний нэрээр хайх…">
+    <button type="button" class="minebtn" id="mineBtn" aria-pressed="false" hidden>Миний фонтууд</button>
     <span class="count" id="count"></span>
   </div>
   <div class="grid" id="grid" aria-live="polite"><div class="empty">Ачаалж байна…</div></div>
@@ -209,6 +231,7 @@
     const meta = el('div', 'meta');
     meta.append(el('b', '', it.title || 'Нэргүй фонт'), el('span', '', (it.nickname || 'Нэргүй') + ' · ' + fmtDate(it.created_at)));
     const bd = el('div', 'badges');
+    if (isMine(it)) bd.appendChild(el('span', 'bd mine', 'Миний'));
     if (it.versions.length > 1) bd.appendChild(el('span', 'bd vb', 'v' + it.versions.length));
     if (it.comments) bd.appendChild(el('span', 'bd', '💬 ' + it.comments));
     if (it.requests) bd.appendChild(el('span', 'bd', '✎ ' + it.requests));
@@ -218,9 +241,12 @@
     return b;
   }
 
+  let ownerKey = ''; try { ownerKey = localStorage.getItem('ou-owner') || ''; } catch (e) {}
+  const isMine = it => it.versions.some(v => v.mine);
   function render() {
     const q = $('q').value.trim().toLowerCase();
-    const shown = items.filter(it => !q || (it.title || '').toLowerCase().includes(q) || (it.nickname || '').toLowerCase().includes(q));
+    const mineOnly = $('mineBtn').getAttribute('aria-pressed') === 'true';
+    const shown = items.filter(it => (!mineOnly || isMine(it)) && (!q || (it.title || '').toLowerCase().includes(q) || (it.nickname || '').toLowerCase().includes(q)));
     const g = $('grid'); g.innerHTML = '';
     $('count').textContent = items.length ? shown.length + ' фонт' : '';
     if (!shown.length) {
@@ -271,7 +297,50 @@
     const dl = el('a', 'btn primary', it.versions.length > 1 ? '↓ Татах (v' + it.versions.length + ')' : '↓ Татах'); dl.href = fontUrl(L.id);
     dl.download = (it.title || 'font').replace(/[^\p{L}\p{N}\- ]/gu, '').trim().replace(/\s+/g, '-') + '-MN.woff';
     const rq = el('button', 'btn ghost', '✎ Засах хүсэлт'); rq.type = 'button';
-    acts.append(dl, rq);
+    const shb = el('button', 'btn ghost', '↗ Хуваалцах'); shb.type = 'button';
+    const imb = el('button', 'btn ghost', '🖼 Зураг'); imb.type = 'button'; imb.title = 'Фэйсбүүк, Инстаграмд тавих зураг татах';
+    const shSt = el('span', 'cstat'); shSt.setAttribute('role', 'status');
+    const link = location.origin + '/fontsan/f/' + it.id;
+    shb.onclick = async () => {
+      const data = { title: (it.title || 'Фонт') + ' — монгол үсэгтэй фонт', text: (it.title || 'Фонт') + ' фонтыг монгол үсэгтэй болгосон. Үнэгүй татаарай:', url: link };
+      try { if (navigator.share) { await navigator.share(data); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+      try { await navigator.clipboard.writeText(link); shSt.textContent = 'Холбоос хуулагдлаа ✓'; }
+      catch (e) { shSt.textContent = link; }
+      setTimeout(() => { shSt.textContent = ''; }, 4000);
+    };
+    imb.onclick = () => shareImage(it, imb);
+    acts.append(dl, rq, shb, imb, shSt);
+    let own = null;
+    const mineV = it.versions.filter(v => v.mine);
+    if (mineV.length) {
+      const target = mineV[mineV.length - 1];
+      const eb = el('button', 'btn ghost', '⚙ Миний фонт'); eb.type = 'button'; acts.appendChild(eb);
+      own = el('div', 'ownbox'); own.hidden = true;
+      own.appendChild(el('b', '', 'Та энэ фонтыг хадгалсан тул засаж, эсвэл Фонт сангаас авч болно.'));
+      const ti = el('input'); ti.value = target.title || ''; ti.maxLength = 120; ti.setAttribute('aria-label', 'Нэр');
+      const no = el('textarea'); no.value = target.note || ''; no.maxLength = 600; no.placeholder = 'Тайлбар'; no.setAttribute('aria-label', 'Тайлбар');
+      const st = el('span', 'cstat'); st.setAttribute('role', 'status');
+      const sv = el('button', 'btn primary sm', 'Хадгалах'); sv.type = 'button';
+      const rm = el('button', 'btn bad sm', 'Фонт сангаас авах'); rm.type = 'button';
+      const ownFetch = (method, body) => fetch('/api/lib/' + target.id, { method, headers: { 'content-type': 'application/json', 'x-owner-key': ownerKey }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+      sv.onclick = async () => {
+        sv.disabled = true; st.textContent = '';
+        try { const j = await ownFetch('PATCH', { title: ti.value, note: no.value });
+          if (j.ok) { target.title = ti.value.trim(); target.note = no.value.trim(); st.textContent = j.held ? 'Хадгаллаа — холбоос агуулсан тул шалгагдсаны дараа гарна.' : 'Хадгаллаа.'; if (target === it) { h2.textContent = target.title; } }
+          else st.textContent = 'Хадгалж чадсангүй.'; } catch (e) { st.textContent = 'Хадгалж чадсангүй (сүлжээ).'; }
+        sv.disabled = false;
+      };
+      rm.onclick = async () => {
+        if (!confirm('«' + (target.title || '') + '»-г Фонт сангаас авах уу? Энэ нь буцаагдахгүй.')) return;
+        rm.disabled = true;
+        try { const j = await ownFetch('DELETE'); if (j.ok) { all = all.filter(x => x.id !== target.id); items = group(all); if (!all.some(x => x.mine)) { $('mineBtn').hidden = true; $('mineBtn').setAttribute('aria-pressed', 'false'); } closeFont(); return; } st.textContent = 'Авч чадсангүй.'; }
+        catch (e) { st.textContent = 'Авч чадсангүй (сүлжээ).'; }
+        rm.disabled = false;
+      };
+      const r1 = el('div', 'row'); r1.append(sv, rm, st);
+      own.append(ti, no, r1);
+      eb.onclick = () => { own.hidden = !own.hidden; if (!own.hidden) ti.focus(); };
+    }
     const pv = el('div', 'preview loading', SAMPLE); pv.setAttribute('contenteditable', 'true'); pv.setAttribute('spellcheck', 'false');
     pv.setAttribute('aria-label', 'Жишээ текст — засаж туршиж болно');
     const al = el('div', 'alpha loading', ALPHA + ' ' + ALPHA.toLowerCase());
@@ -281,7 +350,9 @@
     if (ch.added) addChip('Нэмсэн:', ch.added);
     if (ch.edited) addChip('Гараар зассан:', ch.edited);
     if (ch.faux) addChip('Танисан:', ch.faux);
-    sh.append(x, head, acts, pv, al, chips);
+    sh.append(x, head, acts);
+    if (own) sh.appendChild(own);
+    sh.append(pv, al, chips);
     if (it.note) sh.appendChild(el('div', 'note', it.note));
     loadFace(L.id, [pv, al]);
     if (it.versions.length > 1) {
@@ -373,22 +444,56 @@
     sh.appendChild(sec);
     load();
     $('modal').hidden = false; document.body.style.overflow = 'hidden';
-    if (location.hash !== '#f' + id) history.replaceState(null, '', '#f' + id);
+    if (location.pathname !== '/fontsan/f/' + id) history.replaceState(null, '', '/fontsan/f/' + id);
     x.focus();
+  }
+  // a 1200×630 picture of the font for social posts, drawn with the font itself
+  async function shareImage(it, btn) {
+    const L = it.latest, fam = 'lib' + L.id;
+    btn.disabled = true;
+    try {
+      loadFace(L.id, []);
+      await faces.get(L.id);
+      await document.fonts.load('80px "' + fam + '"', 'ӨҮөү');
+      const c = document.createElement('canvas'); c.width = 1200; c.height = 630;
+      const g = c.getContext('2d');
+      g.fillStyle = '#f6f6f3'; g.fillRect(0, 0, 1200, 630);
+      const grad = g.createRadialGradient(250, 120, 10, 250, 120, 650); grad.addColorStop(0, 'rgba(47,84,235,.14)'); grad.addColorStop(1, 'rgba(47,84,235,0)');
+      g.fillStyle = grad; g.fillRect(0, 0, 1200, 630);
+      g.fillStyle = '#111113';
+      const fit = (txt, font, max, size) => { do { g.font = size + 'px ' + font; size -= 2; } while (g.measureText(txt).width > max && size > 20); return size + 2; };
+      const ff = '"' + fam + '", Inter, sans-serif';
+      fit('Өглөөний нар', ff, 1060, 150); g.fillText('Өглөөний нар', 70, 210);
+      fit('Үүрийн гэгээ', ff, 1060, 150); g.fillText('Үүрийн гэгээ', 70, 370);
+      g.fillStyle = '#6b6b72'; fit('АБВГДЕЁЖЗИЙКЛМНОӨПРСТУҮФХЦЧШЩЪЫЬЭЮЯ', ff, 1060, 44); g.fillText('АБВГДЕЁЖЗИЙКЛМНОӨПРСТУҮФХЦЧШЩЪЫЬЭЮЯ', 70, 455);
+      g.fillStyle = '#111113'; g.font = '600 30px Inter, sans-serif'; g.fillText(it.title || 'Фонт', 70, 548);
+      g.fillStyle = '#6b6b72'; g.font = '24px Inter, sans-serif'; g.fillText('Монгол үсэгтэй болгосон · ou-font.pages.dev/fontsan/f/' + it.id, 70, 588);
+      g.fillStyle = '#111113'; g.beginPath(); g.roundRect ? g.roundRect(1050, 520, 80, 80, 20) : g.rect(1050, 520, 80, 80); g.fill();
+      g.fillStyle = '#f6f6f3'; g.font = '700 30px "Unbounded MN", Unbounded, Inter, sans-serif'; g.textAlign = 'center'; g.fillText('ӨҮ', 1090, 572);
+      const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = (it.title || 'font').replace(/[^\p{L}\p{N}\- ]/gu, '').trim().replace(/\s+/g, '-') + '-MN.png';
+      document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    } catch (e) { alert('Зураг үүсгэж чадсангүй.'); }
+    btn.disabled = false;
   }
   function closeFont() {
     if ($('modal').hidden) return;
     $('modal').hidden = true; document.body.style.overflow = '';
-    history.replaceState(null, '', location.pathname + location.search);
+    history.replaceState(null, '', '/fontsan/');
     if (openId != null) { const t = $('f' + openId); if (t) t.focus(); else if (lastFocus && lastFocus.focus) lastFocus.focus(); }
     openId = null; render();
   }
   $('modal').addEventListener('click', e => { if (e.target === $('modal')) closeFont(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal').hidden) closeFont(); });
   $('q').addEventListener('input', render);
-  fetch('/api/lib').then(r => r.json()).then(j => {
-    all = j.items || []; items = group(all); render();
-    const m = /^#f(\d+)$/.exec(location.hash); if (m) openFont(+m[1]);
+  $('mineBtn').onclick = () => { const b = $('mineBtn'); b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'); render(); };
+  fetch('/api/lib', { headers: ownerKey ? { 'x-owner-key': ownerKey } : {} }).then(r => r.json()).then(j => {
+    all = j.items || []; items = group(all);
+    $('mineBtn').hidden = !all.some(x => x.mine);
+    render();
+    const m = /^#f(\d+)$/.exec(location.hash) || /^\/fontsan\/f\/(\d+)/.exec(location.pathname);
+    if (m) { const id = +m[1], it = items.find(x => x.id === id || x.versions.some(v => v.id === id)); if (it) openFont(it.id); }
   }).catch(() => { $('grid').innerHTML = ''; $('grid').appendChild(el('div', 'empty', 'Ачаалж чадсангүй. Дахин оролдоно уу.')); });
 })();
 </script>

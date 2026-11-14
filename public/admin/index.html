@@ -127,8 +127,8 @@
     days.forEach(d => { const b = el('div', 'b'); b.style.height = Math.max(3, d.n / max * 100) + '%'; b.dataset.t = d.d.slice(5) + ' · ' + d.n + ' таталт · ' + d.people + ' хүн'; bars.appendChild(b); });
     const ax = el('div', 'axis'); ax.append(el('span', '', days.length ? days[0].d : ''), el('span', '', today ? today.d : ''));
     ch.append(bars, ax); v.appendChild(ch);
-    const t = el('table'); t.innerHTML = '<thead><tr><th>Өдөр</th><th>Таталт</th><th>Хүн</th></tr></thead>';
-    const tb = el('tbody'); (j.days || []).forEach(d => { const r = el('tr'); r.append(el('td', '', d.d), el('td', '', d.n), el('td', '', d.people)); tb.appendChild(r); });
+    const t = el('table'); t.innerHTML = '<thead><tr><th>Өдөр</th><th>Таталт</th><th>Хүн</th><th>Үүнээс бэлэн фонт</th></tr></thead>';
+    const tb = el('tbody'); (j.days || []).forEach(d => { const r = el('tr'); r.append(el('td', '', d.d), el('td', '', d.n), el('td', '', d.people), el('td', '', d.belen || 0)); tb.appendChild(r); });
     t.appendChild(tb); v.appendChild(t);
   }
 
@@ -157,7 +157,7 @@
         const reload = () => fonts(v);
         if (it.status === 'public') c5.appendChild(button('Нуух', 'ghost', async () => { await act('font', it.id, 'hide'); reload(); }));
         else c5.appendChild(button('Нийтлэх', 'ghost', async () => { await act('font', it.id, 'show'); reload(); }));
-        const view = el('a', 'btn ghost', 'Харах'); view.href = '/fontsan/#f' + (it.parent_id || it.id); view.target = '_blank'; c5.appendChild(view);
+        const view = el('a', 'btn ghost', 'Харах'); view.href = '/fontsan/f/' + (it.parent_id || it.id); view.target = '_blank'; c5.appendChild(view);
         c5.appendChild(button('Устгах', 'bad', async () => { if (confirm('#' + it.id + ' «' + it.title + '»-г бүр мөсөн устгах уу? Сэтгэгдлүүд нь ч устна.')) { await act('font', it.id, 'delete'); reload(); } }));
         r.append(c1, c2, c3, c4, c5); tb.appendChild(r);
       });
@@ -172,7 +172,7 @@
     const tb = el('tbody'); t.appendChild(tb); v.appendChild(t);
     (j.items || []).forEach(c => {
       const r = el('tr');
-      const c1 = el('td'); const a = el('a', '', '#' + c.font_id + ' ' + (c.font_title || '')); a.href = '/fontsan/#f' + c.font_id; a.target = '_blank'; a.style.color = 'var(--accent)'; c1.appendChild(a);
+      const c1 = el('td'); const a = el('a', '', '#' + c.font_id + ' ' + (c.font_title || '')); a.href = '/fontsan/f/' + c.font_id; a.target = '_blank'; a.style.color = 'var(--accent)'; c1.appendChild(a);
       const c2 = el('td'); c2.append(el('div', '', (c.kind === 'request' ? '✎ Засах хүсэлт ' + (c.letters || '') : '💬') + ' · ' + (c.nickname || '')), el('div', 'msg', c.message));
       if (c.fixed_by) c2.append(el('div', 'sub', '✓ ' + c.fixed_by + ' зассан'));
       const c3 = el('td', 'sub', jst(c.created_at));

@@ -3,7 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ө Ү нэмэгч — фонтод монгол үсэг нэмэх</title>
+<title>Өү — фонтод монгол үсэг (Ө, Ү) нэмэх үнэгүй хэрэгсэл</title>
+<meta name="description" content="Дуртай фонтдоо Ө, Ү болон бүх кирилл үсгийг фонтын өөрийн хэлбэрээр нэмнэ. Үнэгүй, бүртгэлгүй, файл тань компьютерээс гардаггүй.">
+<link rel="canonical" href="https://ou-font.pages.dev/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Өү">
+<meta property="og:title" content="Өү — фонтоо монгол болго">
+<meta property="og:description" content="Дуртай фонтдоо Ө, Ү болон бүх кирилл үсгийг фонтын өөрийн хэлбэрээр нэмнэ. Үнэгүй, бүртгэлгүй, файл тань компьютерээс гардаггүй.">
+<meta property="og:url" content="https://ou-font.pages.dev/">
+<meta property="og:image" content="https://ou-font.pages.dev/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#f6f6f3">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Өү","url":"https://ou-font.pages.dev/","applicationCategory":"DesignApplication","operatingSystem":"Any","inLanguage":"mn","description":"Фонтод монгол кирилл үсэг (Ө, Ү) нэмэх үнэгүй хэрэгсэл","offers":{"@type":"Offer","price":"0"},"author":{"@type":"Person","name":"А.Хонгор"}}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
@@ -197,6 +210,7 @@
   nav .libbtn, nav .navlink{white-space:nowrap}
   @media (max-width:520px){ nav .libbtn{font-size:14px;padding:5px 14px 5px 5px;gap:7px} nav .libbtn .ic{width:26px;height:26px;font-size:11px} nav .links{gap:4px} nav .navlink{padding:6px 8px} }
   @media (max-width:430px){ nav .brand-name{display:none} }
+  @media (max-width:600px){ nav .links{flex-wrap:wrap;justify-content:flex-end;row-gap:6px} nav #engineText{display:none} nav .engine{padding:8px} }
 
   .howbtn{font:inherit;font-size:11px;color:var(--accent);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
   .howchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
@@ -366,6 +380,7 @@
   <nav>
     <a class="brand" href="./" aria-label="Өү — нүүр хуудас"><div class="logo">ӨҮ</div><span class="brand-name">Өү</span></a>
     <div class="links">
+      <a class="navlink" href="/belen/">Бэлэн фонт</a>
       <a class="libbtn" href="/fontsan/"><span class="ic" aria-hidden="true">Aa</span>Фонт сан</a>
       <a class="navlink" href="/sanal">Санал хүсэлт</a>
       <div class="engine loading" id="engine"><span class="dot"></span><span id="engineText">Бэлтгэж байна</span></div>
@@ -2991,10 +3006,18 @@ def _copy(font, src, pen):
 
 
 def _rename(font, family):
+    """New family name, keeping the font's own naming structure: "Poppins
+    Light" becomes "Poppins MN Light", so the styles of one family don't
+    overwrite each other when installed."""
     name = font["name"]
     old = (name.getDebugName(16) or name.getDebugName(1) or "").strip()
     sub = (name.getDebugName(17) or name.getDebugName(2) or "Regular").strip()
     ps = (family + "-" + sub).replace(" ", "")
+
+    def swap(s):
+        return s.replace(old, family, 1) if old and old in s else None
+
+    fam1 = family
     for rec in list(name.names):
         nid = rec.nameID
         try:
@@ -3002,9 +3025,11 @@ def _rename(font, family):
         except Exception:
             continue
         if nid in (1, 16):
-            new = family
+            new = swap(s) or family
+            if nid == 1:
+                fam1 = new
         elif nid == 4:
-            new = s.replace(old, family, 1) if old and old in s else family + " " + sub
+            new = swap(s) or family + " " + sub
         elif nid == 6:
             new = ps
         elif nid == 3:
@@ -3016,8 +3041,8 @@ def _rename(font, family):
         cff = font["CFF "].cff
         cff.fontNames = [ps]
         td = cff.topDictIndex[0]
-        td.rawDict["FamilyName"] = family
-        td.FamilyName = family
+        td.rawDict["FamilyName"] = fam1
+        td.FamilyName = fam1
         td.FullName = family + " " + sub
     return ps
 
@@ -3789,7 +3814,7 @@ def font_info(data):
       yes.download = (it.title || 'font').replace(/[^\p{L}\p{N}\- ]/gu, '').trim().replace(/\s+/g, '-') + '-MN.woff';
       yes.onclick = () => { setTimeout(() => { closeMatch(false); msg('Фонт сангаас татлаа · ' + (it.title || '')); }, 200); };
       const view = document.createElement('a'); view.className = 'btn ghost'; view.textContent = 'Фонт санд харах';
-      view.href = '/fontsan/#f' + it.id; view.target = '_blank';
+      view.href = '/fontsan/f/' + it.id; view.target = '_blank';
       a.append(yes, view);
       d.append(h, p, c, a); list.appendChild(d);
       const fam = 'libm' + it.id;
@@ -5182,6 +5207,16 @@ def font_info(data):
   $('libNo').onclick = closeLib;
   $('libModal').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeLib(); } });
   $('libModal').addEventListener('click', e => { if (e.target === $('libModal')) closeLib(); });
+  // one key per browser: fonts saved with it can later be edited or removed from this browser
+  function ownerKey() {
+    let k = '';
+    try { k = localStorage.getItem('ou-owner') || ''; } catch (e) {}
+    if (k.length < 16) {
+      k = (crypto.randomUUID ? crypto.randomUUID() + '-' + crypto.randomUUID() : String(Math.random()).slice(2) + Date.now() + String(Math.random()).slice(2));
+      try { localStorage.setItem('ou-owner', k); } catch (e) {}
+    }
+    return k;
+  }
   function libCelebrate(text, href) {
     const d = $('libDone');
     d.querySelectorAll('.cf').forEach(n => n.remove());
@@ -5226,6 +5261,7 @@ def font_info(data):
                       changes: libChanges(), license: true, font: btoa(b64),
                       src_sha: srcSha, family: info.family || '', style: info.style || '' };
     if (fixCtx) { payload.parent_id = fixCtx.id; if (fixCtx.reqId) payload.request_id = fixCtx.reqId; }
+    payload.owner_key = ownerKey();
     try {
       const res = await fetch('/api/lib', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       const j = await res.json().catch(() => ({}));
@@ -5233,7 +5269,7 @@ def font_info(data):
       $('libMsg').textContent = '';
       const wasFix = !!fixCtx;
       libCelebrate(j.held ? 'Шалгагдсаны дараа Фонт санд гарна.' : j.duplicate ? 'Энэ фонт Фонт санд аль хэдийн байна.'
-        : wasFix ? 'Таны засвар шинэ хувилбар болж нэмэгдлээ.' : 'Таны фонт Фонт санд нэмэгдлээ.', '/fontsan/#f' + j.id);
+        : wasFix ? 'Таны засвар шинэ хувилбар болж нэмэгдлээ.' : 'Таны фонт Фонт санд нэмэгдлээ.', '/fontsan/f/' + j.id);
       if (wasFix && !j.duplicate) { $('fixSend').disabled = true; $('fixSend').textContent = 'Илгээсэн ✓'; fixCtx.reqId = null; }
     } catch (e) { $('libMsg').textContent = 'Хадгалж чадсангүй (сүлжээ).'; libValid(); }
   };

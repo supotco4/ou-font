@@ -15,7 +15,7 @@ export async function onRequest({ request, env, params }) {
   if (request.method === "GET") {
     if (what === "stats") {
       const days = await db.prepare(
-        `SELECT date(created_at, '+9 hours') AS d, COUNT(*) AS n, COUNT(DISTINCT ip_hash) AS people
+        `SELECT date(created_at, '+9 hours') AS d, COUNT(*) AS n, COUNT(DISTINCT ip_hash) AS people, SUM(ext = 'belen') AS belen
            FROM downloads GROUP BY d ORDER BY d DESC LIMIT 60`).all();
       const tot = await db.prepare("SELECT COUNT(*) AS n, COUNT(DISTINCT ip_hash) AS people FROM downloads").first();
       const lib = await db.prepare("SELECT COUNT(*) AS n FROM lib_fonts WHERE status = 'public'").first();

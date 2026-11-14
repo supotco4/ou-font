@@ -2676,10 +2676,18 @@ def _copy(font, src, pen):
 
 
 def _rename(font, family):
+    """New family name, keeping the font's own naming structure: "Poppins
+    Light" becomes "Poppins MN Light", so the styles of one family don't
+    overwrite each other when installed."""
     name = font["name"]
     old = (name.getDebugName(16) or name.getDebugName(1) or "").strip()
     sub = (name.getDebugName(17) or name.getDebugName(2) or "Regular").strip()
     ps = (family + "-" + sub).replace(" ", "")
+
+    def swap(s):
+        return s.replace(old, family, 1) if old and old in s else None
+
+    fam1 = family
     for rec in list(name.names):
         nid = rec.nameID
         try:
@@ -2687,9 +2695,11 @@ def _rename(font, family):
         except Exception:
             continue
         if nid in (1, 16):
-            new = family
+            new = swap(s) or family
+            if nid == 1:
+                fam1 = new
         elif nid == 4:
-            new = s.replace(old, family, 1) if old and old in s else family + " " + sub
+            new = swap(s) or family + " " + sub
         elif nid == 6:
             new = ps
         elif nid == 3:
@@ -2701,8 +2711,8 @@ def _rename(font, family):
         cff = font["CFF "].cff
         cff.fontNames = [ps]
         td = cff.topDictIndex[0]
-        td.rawDict["FamilyName"] = family
-        td.FamilyName = family
+        td.rawDict["FamilyName"] = fam1
+        td.FamilyName = fam1
         td.FullName = family + " " + sub
     return ps
 

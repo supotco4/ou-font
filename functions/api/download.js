@@ -5,7 +5,7 @@ import { json, ipHash } from "../_lib/util.js";
 export async function onRequestPost({ request, env }) {
   let body = {};
   try { body = await request.json(); } catch {}
-  const ext = ["ttf", "otf"].includes(body.ext) ? body.ext : null;
+  const ext = ["ttf", "otf", "belen"].includes(body.ext) ? body.ext : null;
   const country = (request.cf && request.cf.country) || null;
   const ih = await ipHash(request);
   if (ih) {
