@@ -4559,9 +4559,18 @@ def font_info(data):
   }
   function fixDirs() { // outer shapes clockwise, holes the other way (nonzero fill)
     const cs = W().contours;
+    // a shape is a hole only when it lies (almost) wholly inside another one;
+    // shapes that just overlap — like a pasted foot — stay filled
+    const bb = c => { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; c.forEach(q => { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }); return [x0, y0, x1, y1]; };
+    const boxes = cs.map(bb);
+    const within = (i, j) => {
+      const a = boxes[i], b = boxes[j];
+      if (a[0] < b[0] || a[1] < b[1] || a[2] > b[2] || a[3] > b[3]) return false;
+      const pts = cs[i].filter(q => q[2] === 'on'); if (!pts.length) return false;
+      return pts.filter(q => inside(q, cs[j])).length >= pts.length * 0.9;
+    };
     cs.forEach((c, i) => {
-      const p = c.find(q => q[2] === 'on') || c[0];
-      let depth = 0; cs.forEach((o, j) => { if (j !== i && o.length > 2 && inside(p, o)) depth++; });
+      let depth = 0; cs.forEach((o, j) => { if (j !== i && o.length > 2 && within(i, j)) depth++; });
       if ((depth % 2 === 0) !== (area(c) < 0)) {
         c.reverse();
         // keep the selection pointing at the same points
