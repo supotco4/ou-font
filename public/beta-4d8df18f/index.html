@@ -310,7 +310,26 @@
   .ed .tools button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
   .ed .tools button:disabled{opacity:.35;cursor:default}
   .ed .tools svg{width:15px;height:15px;fill:currentColor}
-  .ed .canvas{background:var(--tile);border-radius:18px;flex:1 1 auto;min-height:260px;height:58vh;position:relative;overflow:hidden;outline:0}
+  .ed .edmain{display:flex;gap:10px;min-height:0}
+  .ed .canvas{background:var(--tile);border-radius:18px;flex:1 1 auto;min-width:0;min-height:260px;height:58vh;position:relative;overflow:hidden;outline:0}
+  .ed .layers{width:220px;flex:none;background:var(--tile);border-radius:18px;padding:10px;display:flex;flex-direction:column;gap:6px;height:58vh;min-height:260px}
+  .ed .layers .lh{display:flex;align-items:baseline;justify-content:space-between;padding:2px 4px}
+  .ed .layers .lh b{font-size:13px}
+  .ed .layers .lh span{font-size:12px;color:var(--faint)}
+  .ed .layers .ll{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px;min-height:0}
+  .ed .layers .lnote{font-size:11.5px;color:var(--faint);line-height:1.35;padding:0 4px}
+  .ed .lay{display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:3px}
+  .ed .lay.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+  .ed .lay.off .ln{opacity:.45;text-decoration:line-through}
+  .ed .lay button{border:0;background:transparent;color:var(--soft);border-radius:8px;cursor:pointer;height:28px;min-width:28px;display:grid;place-items:center;font-size:13px;padding:0}
+  .ed .lay button:hover{background:var(--tile);color:var(--ink)}
+  .ed .lay button[aria-pressed=true]{color:var(--ink)}
+  .ed .lay .ln{flex:1;min-width:0;justify-content:start;text-align:left;font:500 12.5px/1.2 Inter,sans-serif;color:var(--ink);padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block!important}
+  .ed .lay .ln small{color:var(--faint);font-weight:400;margin-left:4px}
+  .ed .lay input{flex:1;min-width:0;font:500 12.5px Inter,sans-serif;padding:4px 6px;border-radius:7px;border:1px solid var(--accent);background:var(--surface);color:var(--ink)}
+  .ed .lay .lthumb{width:28px;height:28px;flex:none;border-radius:7px;background:var(--tile)}
+  .ed .lay .lthumb path{fill:var(--ink)}
+  .ed .shape.locked{pointer-events:none;opacity:.55}
   .ed .canvas.pan{cursor:grab}.ed .canvas.panning{cursor:grabbing}
   .ed .canvas.t-draw svg,.ed .canvas.t-rect svg,.ed .canvas.t-ellipse svg,.ed .canvas.t-add svg,.ed .canvas.t-crop svg{cursor:crosshair}
   .ed .shapewrap{position:relative;display:flex}
@@ -370,6 +389,11 @@
     .bar .file{flex-basis:100%}
     .ed .box{padding:14px}
     .ed .canvas{height:50vh}
+    .ed .box{overflow-y:auto}
+    .ed .edmain{flex-direction:column;flex:none}
+    .ed .canvas{flex:none;height:44vh}
+    .ed .layers{width:auto;height:auto;min-height:0;max-height:170px;flex:none}
+    .ed .layers .lnote{display:none}
     .ed .mini{display:none}
     .ed .tools button{padding:8px 9px}
     .alpha .tile .g{font-size:34px}
@@ -558,6 +582,7 @@
       </div>
       <button type="button" id="tReset" title="Програмын үүсгэсэн хэлбэрт буцаах">Анхны хэлбэр</button>
     </div>
+    <div class="edmain">
     <div class="canvas" id="edCanvas" tabindex="0">
       <svg id="edSvg" aria-label="Үсгийн хэлбэр"></svg>
       <div class="mini" aria-hidden="true"><svg id="edMini"></svg></div>
@@ -588,7 +613,16 @@
         <span>⊕ Нэгтгэх</span><i>сонгосон дүрсүүдийг нэг дүрс болгох</i>
         <span>⊖ Хасах</span><i>сүүлд зурсан дүрсийг бусдаас хасах (жишээ нь тэгш өнцөгт зураад хас)</i>
         <span>+ · − · 0</span><i>томруулах · жижигрүүлэх · бүтэн харах</i>
+        <b>Давхарга</b>
+        <span>👁 · 🔒</span><i>нуух (фонтод орохгүй) · түгжих (засагдахгүй)</i>
+        <span>Нэр дээр давхар товших</span><i>нэр солих</i>
       </div>
+    </div>
+    <aside class="layers" aria-label="Давхаргууд">
+      <div class="lh"><b>Давхарга</b><span id="layCount"></span></div>
+      <div class="ll" id="layList" role="list"></div>
+      <p class="lnote">Шинэ дүрс бүр тусдаа давхарга болно. Нуусан давхарга фонтод орохгүй.</p>
+    </aside>
     </div>
     <div class="bottom">
       <span class="hint" id="edHint"></span>
@@ -4452,6 +4486,8 @@ def font_info(data):
       const up = upperOf(cp);
       if (!edits[cp] && followsUpper(cp)) src = edits[upperOf(cp)];
       E.work[cp] = { width: src.width, contours: clone(src.contours), touched: false, undo: [], redo: [] };
+      if (src === edits[cp] && src.lay) applyLayerState(E.work[cp], src.lay);
+      else { E.cp = cp; layerName(edits[cp] || src !== E.base[cp] ? 'Засварласан хэлбэр' : LNAMES.base); }
     }
     E.cp = cp; E.sel = new Set(); E.draft = null; E.view = null; E.hov = null;
     setTool(E.tool === 'add' || E.tool === 'move' ? E.tool : 'move');
@@ -4474,15 +4510,125 @@ def font_info(data):
     $('edHow').hidden = !isGenerated(E.cp);
   }
   const W = () => E.work[E.cp];
+  // ----- layers: every shape belongs to one; one operation makes one layer -----
+  let layerOf = new WeakMap(), layerSeq = 1;
+  const LNAMES = { base: 'Үндсэн хэлбэр' };
+  function layerName(n) { E.layerName = n; }
+  function syncLayers() {
+    const w = W(); if (!w) return;
+    if (!w.layers) { w.layers = []; w.stash = {}; }
+    const loose = w.contours.filter(c => !layerOf.has(c));
+    if (loose.length) {
+      let id = E.layerTo && w.layers.some(l => l.id === E.layerTo) ? E.layerTo : null;
+      if (!id) { id = 'L' + (layerSeq++); w.layers.push({ id, name: E.layerName || ('Дүрс ' + (w.layers.length + 1)), hidden: false, locked: false }); }
+      loose.forEach(c => layerOf.set(c, id));
+    }
+    E.layerName = null; E.layerTo = null;
+    const used = new Set(w.contours.map(c => layerOf.get(c)));
+    w.layers = w.layers.filter(l => used.has(l.id) || (l.hidden && w.stash[l.id] && w.stash[l.id].length));
+  }
+  const layerOfCi = ci => layerOf.get(W().contours[ci]);
+  const lockedCi = ci => { const l = W().layers && W().layers.find(x => x.id === layerOfCi(ci)); return !!(l && l.locked); };
+  function layerState() {
+    const w = W();
+    return { layers: w.layers || [], lid: w.contours.map(c => layerOf.get(c) || null), stash: w.stash || {} };
+  }
+  function applyLayerState(w, s) {
+    w.layers = clone(s.layers || []); w.stash = clone(s.stash || {});
+    (s.lid || []).forEach((id, i) => { if (id && w.contours[i]) layerOf.set(w.contours[i], id); });
+    Object.values(w.stash).forEach(cs => cs.forEach(c => layerOf.set(c, null)));
+    w.layers.forEach(l => { const n = parseInt(String(l.id).slice(1), 10); if (n >= layerSeq) layerSeq = n + 1; });
+  }
+  function layerSelect(id, add) {
+    if (!add) E.sel = new Set();
+    W().contours.forEach((c, ci) => { if (layerOf.get(c) === id) selectContour(ci, true); });
+    render();
+  }
+  function layerToggleHide(id) {
+    const w = W(), l = w.layers.find(x => x.id === id); if (!l) return;
+    push();
+    if (!l.hidden) {
+      w.stash[id] = w.contours.filter(c => layerOf.get(c) === id);
+      w.contours = w.contours.filter(c => layerOf.get(c) !== id);
+      l.hidden = true;
+    } else {
+      (w.stash[id] || []).forEach(c => { w.contours.push(c); layerOf.set(c, id); });
+      delete w.stash[id]; l.hidden = false;
+    }
+    E.sel = new Set(); render();
+  }
+  function layerToggleLock(id) {
+    const l = W().layers.find(x => x.id === id); if (!l) return;
+    push(); l.locked = !l.locked;
+    if (l.locked) E.sel = new Set([...E.sel].filter(k => layerOfCi(unkey(k)[0]) !== id));
+    render();
+  }
+  function layerDelete(id) {
+    const w = W(); push();
+    w.contours = w.contours.filter(c => layerOf.get(c) !== id);
+    delete w.stash[id]; w.layers = w.layers.filter(l => l.id !== id);
+    E.sel = new Set(); render();
+  }
+  function layerRename(id, name) {
+    const l = W().layers.find(x => x.id === id); if (!l) return;
+    name = String(name || '').trim().slice(0, 40); if (!name || name === l.name) return;
+    push(); l.name = name; render();
+  }
+  function renderLayers() {
+    const w = W(), box = $('layList'); if (!box) return;
+    box.innerHTML = '';
+    const selC = new Set([...E.sel].map(k => unkey(k)[0]));
+    $('layCount').textContent = w.layers.length ? w.layers.length + '' : '';
+    w.layers.slice().reverse().forEach(l => {
+      const cs = l.hidden ? (w.stash[l.id] || []) : w.contours.filter(c => layerOf.get(c) === l.id);
+      const row = document.createElement('div'); row.className = 'lay' + (l.hidden ? ' off' : ''); row.setAttribute('role', 'listitem');
+      const mine = w.contours.map((c, ci) => layerOf.get(c) === l.id ? ci : -1).filter(ci => ci >= 0);
+      if (mine.length && mine.every(ci => selC.has(ci))) row.classList.add('on');
+      const eye = document.createElement('button'); eye.type = 'button'; eye.textContent = l.hidden ? '◌' : '👁';
+      eye.title = l.hidden ? 'Харуулах' : 'Нуух (фонтод орохгүй)'; eye.setAttribute('aria-label', (l.hidden ? 'Харуулах: ' : 'Нуух: ') + l.name);
+      eye.onclick = () => layerToggleHide(l.id);
+      const lock = document.createElement('button'); lock.type = 'button'; lock.textContent = l.locked ? '🔒' : '🔓';
+      lock.setAttribute('aria-pressed', l.locked); lock.title = l.locked ? 'Түгжээ тайлах' : 'Түгжих (санамсаргүй засахаас хамгаална)';
+      lock.setAttribute('aria-label', (l.locked ? 'Түгжээ тайлах: ' : 'Түгжих: ') + l.name);
+      lock.onclick = () => layerToggleLock(l.id);
+      const th = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); th.setAttribute('class', 'lthumb');
+      const m = M(), top = Math.max(m.asc, m.cap), bot = Math.min(m.desc, 0), h = top - bot;
+      th.setAttribute('viewBox', Math.min(0, w.width / 2 - h / 2) + ' ' + (-top) + ' ' + Math.max(w.width, h) + ' ' + h);
+      th.innerHTML = '<path transform="scale(1,-1)" fill-rule="nonzero" d="' + cs.map(pathD).join('') + '"/>';
+      const nm = document.createElement('button'); nm.type = 'button'; nm.className = 'ln';
+      nm.textContent = l.name; const sm = document.createElement('small'); sm.textContent = cs.length > 1 ? cs.length + ' дүрс' : ''; nm.appendChild(sm);
+      nm.title = 'Дарж сонгоно · давхар дарж нэр солино';
+      let tmr = 0;
+      nm.onclick = ev => {   // wait a moment so a double click can rename instead
+        clearTimeout(tmr);
+        if (ev.detail > 1) { startRename(); return; }
+        const add = ev.shiftKey;
+        tmr = setTimeout(() => { if (!l.hidden && !l.locked) layerSelect(l.id, add); }, 230);
+      };
+      nm.onkeydown = ev => { if (ev.key === 'F2') { ev.preventDefault(); startRename(); } };
+      const startRename = () => {
+        const inp = document.createElement('input'); inp.value = l.name; inp.setAttribute('aria-label', 'Давхаргын нэр');
+        nm.replaceWith(inp); inp.focus(); inp.select();
+        const done = ok => { if (ok) layerRename(l.id, inp.value); else renderLayers(); };
+        inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') done(true); if (e.key === 'Escape') done(false); };
+        inp.onblur = () => done(true);
+      };
+      const del = document.createElement('button'); del.type = 'button'; del.textContent = '🗑'; del.title = 'Давхаргыг устгах';
+      del.setAttribute('aria-label', 'Устгах: ' + l.name); del.onclick = () => layerDelete(l.id);
+      row.append(eye, lock, th, nm, del);
+      box.appendChild(row);
+    });
+    if (!w.layers.length) { const e = document.createElement('p'); e.className = 'lnote'; e.textContent = 'Давхарга алга.'; box.appendChild(e); }
+  }
   const M = () => E.base[E.cp];
 
   // ----- history -----
-  function snap() { return JSON.stringify({ w: W().width, c: W().contours }); }
+  function snap() { return JSON.stringify({ w: W().width, c: W().contours, L: layerState() }); }
   function push() {
     const w = W(); w.undo.push(snap()); if (w.undo.length > 200) w.undo.shift();
     w.redo = []; w.touched = true; E.hov = null;
   }
-  function restore(s) { E.hov = null; const o = JSON.parse(s); W().width = o.w; W().contours = o.c; E.sel = new Set(); render(); }
+  function restore(s) { E.hov = null; const o = JSON.parse(s); W().width = o.w; W().contours = o.c; if (o.L) applyLayerState(W(), o.L); E.sel = new Set(); render(); }
   function undo() { const w = W(); if (!w.undo.length) return; w.redo.push(snap()); restore(w.undo.pop()); }
   function redo() { const w = W(); if (!w.redo.length) return; w.undo.push(snap()); restore(w.redo.pop()); }
 
@@ -4589,7 +4735,7 @@ def font_info(data):
   }
   function nearestSeg(pt) {
     let best = null;
-    W().contours.forEach((c, ci) => segs(c).forEach(s => {
+    W().contours.forEach((c, ci) => lockedCi(ci) || segs(c).forEach(s => {
       for (let k = 0; k <= 32; k++) {
         const t = k / 32, q = segPoint(c, s, t), d = Math.hypot(q[0] - pt[0], q[1] - pt[1]);
         if (!best || d < best.dist) best = { c: ci, seg: s, t, dist: d };
@@ -4646,6 +4792,7 @@ def font_info(data):
   }
   let G = null, R0 = 10;
   function render() {
+    syncLayers();
     const svg = $('edSvg'), w = W(), m = M();
     if (!E.view) fitView();
     svg.innerHTML = '';
@@ -4665,8 +4812,9 @@ def font_info(data):
     if (w.touched || edits[E.cp]) { const d0 = m.contours.map(pathD).join(''); if (d0) el('path', { d: d0, class: 'ghost' }, G); }
     const selC = new Set([...E.sel].map(k => unkey(k)[0]));
     const fullC = new Set([...selC].filter(ci => W().contours[ci] && W().contours[ci].every((_, pi) => E.sel.has(key(ci, pi)))));
-    w.contours.forEach((c, ci) => el('path', { d: pathD(c), class: 'shape' + (fullC.has(ci) ? ' sel' : ''), 'data-c': ci, 'fill-rule': 'nonzero' }, G));
-    w.contours.forEach(c => segs(c).forEach(([a, offs, b]) => {
+    const lockedSet = new Set(w.contours.map((_, ci) => ci).filter(lockedCi));
+    w.contours.forEach((c, ci) => el('path', { d: pathD(c), class: 'shape' + (fullC.has(ci) ? ' sel' : '') + (lockedSet.has(ci) ? ' locked' : ''), 'data-c': ci, 'fill-rule': 'nonzero' }, G));
+    w.contours.forEach((c, ci) => lockedSet.has(ci) || segs(c).forEach(([a, offs, b]) => {
       if (!offs.length) return;
       el('line', { x1: c[a][0], y1: c[a][1], x2: c[offs[0]][0], y2: c[offs[0]][1], class: 'hl' }, G);
       const l = offs[offs.length - 1];
@@ -4676,7 +4824,7 @@ def font_info(data):
       if (E.sel.has(key(ci, sg[0])) && E.sel.has(key(ci, sg[2])) && !fullC.has(ci)) el('path', { d: segD(c, sg), class: 'segsel' }, G);
     }));
     if (E.hov && !E.drag && E.tool === 'move' && w.contours[E.hov.c]) el('path', { d: segD(w.contours[E.hov.c], E.hov.seg), class: 'seghov' }, G);
-    w.contours.forEach((c, ci) => c.forEach((p, pi) => {
+    w.contours.forEach((c, ci) => lockedSet.has(ci) || c.forEach((p, pi) => {
       const on = p[2] === 'on', s = E.sel.has(key(ci, pi));
       el('circle', { cx: p[0], cy: p[1], r: R0 * 2.2, class: 'hit', 'data-c': ci, 'data-p': pi }, G);
       el(on ? 'rect' : 'circle', on
@@ -4700,7 +4848,7 @@ def font_info(data):
       if (E.drag.kind === 'ellipse') el('ellipse', { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, rx: (x1 - x0) / 2, ry: (y1 - y0) / 2, class: 'draft' }, G);
       else el('rect', { x: x0, y: y0, width: x1 - x0, height: y1 - y0, class: E.drag.kind === 'rect' ? 'draft' : 'marq' }, G);
     }
-    renderMini();
+    renderMini(); renderLayers();
     $('edWidth').textContent = 'Өргөн ' + Math.round(w.width);
     $('edEmpty').hidden = !(E.present && !E.present.has(E.cp) && !w.contours.length && !E.draft);
     const sel = [...E.sel].map(unkey);
@@ -4882,7 +5030,7 @@ def font_info(data):
       if (d.kind === 'marq') {
         const x0 = Math.min(d.start[0], pt[0]), x1 = Math.max(d.start[0], pt[0]), y0 = Math.min(d.start[1], pt[1]), y1 = Math.max(d.start[1], pt[1]);
         E.sel = new Set(d.add ? d.prev : []);
-        W().contours.forEach((c, ci) => c.forEach((p, pi) => { if (p[0] >= x0 && p[0] <= x1 && p[1] >= y0 && p[1] <= y1) E.sel.add(key(ci, pi)); }));
+        W().contours.forEach((c, ci) => lockedCi(ci) || c.forEach((p, pi) => { if (p[0] >= x0 && p[0] <= x1 && p[1] >= y0 && p[1] <= y1) E.sel.add(key(ci, pi)); }));
       }
       render();
     }
@@ -4898,6 +5046,7 @@ def font_info(data):
       if (x1 - x0 > 2 && y1 - y0 > 2) {
         push();
         W().contours.push(d.kind === 'ellipse' ? ellipseContour(x0, y0, x1, y1) : [[x0, y0, 'on'], [x0, y1, 'on'], [x1, y1, 'on'], [x1, y0, 'on']]);
+        layerName(d.kind === 'ellipse' ? 'Дугуй' : 'Дөрвөлжин');
         const ci = W().contours.length - 1; selectContour(ci); fixDirs();
         setTool('move');
       }
@@ -4912,13 +5061,15 @@ def font_info(data):
     const cs = W().contours;
     let S = fullContours();
     if (!S.length) S = [...new Set([...E.sel].map(k => unkey(k)[0]))];
-    if (!S.length) S = cs.map((_, i) => i);
+    if (!S.length) S = cs.map((_, i) => i).filter(i => !lockedCi(i));
     if (!S.length) return;
     const box = [[x0, y0, 'on'], [x1, y0, 'on'], [x1, y1, 'on'], [x0, y1, 'on']];
     let res;
     try { res = BOOL.intersect(S.map(i => cs[i]), [box]); } catch (e) { $('edHint').textContent = 'Энэ дүрсүүд дээр тайрч чадсангүй.'; return; }
     push();
     const used = new Set(S), keep = cs.filter((_, i) => !used.has(i));
+    const srcL = new Set(S.map(i => layerOf.get(cs[i])));
+    if (srcL.size === 1) E.layerTo = [...srcL][0]; else layerName('Тайрсан');
     W().contours = keep.concat(res);
     E.sel = new Set(); for (let ci = keep.length; ci < W().contours.length; ci++) selectContour(ci, true);
     fixDirs(); setTool('move');
@@ -4955,7 +5106,7 @@ def font_info(data):
     });
     const l = A[A.length - 1], f = A[0]; // closing segment back to the first point
     if (l.hout || f.hin) c.push([R((l.hout || l.p)[0]), R((l.hout || l.p)[1]), 'c'], [R((f.hin || f.p)[0]), R((f.hin || f.p)[1]), 'c']);
-    W().contours.push(c);
+    W().contours.push(c); layerName('Зурсан дүрс');
     selectContour(W().contours.length - 1); fixDirs();
     setTool('move'); render();
   }
@@ -4974,7 +5125,7 @@ def font_info(data):
         else { const s = sg.find(([, offs]) => offs.includes(i)); if (s) s[1].forEach(j => drop.add(j)); }
       });
       const rest = c.filter((_, j) => !drop.has(j));
-      if (rest.filter(q => q[2] === 'on').length < 2) remove.add(ci); else cs[ci] = rest;
+      if (rest.filter(q => q[2] === 'on').length < 2) remove.add(ci); else { layerOf.set(rest, layerOf.get(c)); cs[ci] = rest; }
     });
     W().contours = cs.filter((_, ci) => !remove.has(ci));
     E.sel = new Set(); render();
@@ -4993,6 +5144,7 @@ def font_info(data):
     push();
     const start = W().contours.length;
     CLIP.forEach(c => W().contours.push(c.map(p => [p[0] + off, p[1] - off, p[2]])));
+    layerName(off ? 'Хувилсан' : 'Буулгасан');
     E.sel = new Set(); for (let ci = start; ci < W().contours.length; ci++) selectContour(ci, true);
     fixDirs(); render();
   }
@@ -5012,6 +5164,8 @@ def font_info(data):
     try { res = kind === 'sub' ? BOOL.subtract(A, B) : BOOL.union(A, B); } catch (e) { $('edHint').textContent = 'Энэ дүрсүүд дээр хийж чадсангүй.'; return; }
     push();
     const keep = cs.filter((_, i) => !used.has(i));
+    const srcL = new Set([...used].map(i => layerOf.get(cs[i])));
+    if (srcL.size === 1) E.layerTo = [...srcL][0]; else layerName(kind === 'sub' ? 'Хассан' : 'Нэгтгэсэн');
     W().contours = keep.concat(res);
     E.sel = new Set(); for (let ci = keep.length; ci < W().contours.length; ci++) selectContour(ci, true);
     fixDirs(); render();
@@ -5078,6 +5232,7 @@ def font_info(data):
     push();
     const start = W().contours.length;
     o.contours.forEach(c => W().contours.push(c.map(p => [p[0], p[1], p[2]])));
+    layerName('«' + String.fromCodePoint(cp) + '» үсгээс');
     E.sel = new Set(); for (let ci = start; ci < W().contours.length; ci++) selectContour(ci, true);
     fixDirs(); setTool('crop'); render();
     $('edHint').textContent = '«' + String.fromCodePoint(cp) + '»-г нэмлээ (сонгогдсон). Одоо үлдээх хэсгээ хүрээгээр чирж тэмдэглэ — бусад нь арилна.';
@@ -5113,7 +5268,9 @@ def font_info(data):
       if (!w.touched) return;
       changed = true;
       const same = JSON.stringify(w.contours) === JSON.stringify(E.base[cp].contours) && w.width === E.base[cp].width;
-      if (same) delete edits[cp]; else edits[cp] = { width: Math.round(w.width), contours: w.contours };
+      const hasHidden = w.layers && w.layers.some(l => l.hidden);
+      if (same && !hasHidden) delete edits[cp];
+      else { edits[cp] = { width: Math.round(w.width), contours: w.contours, lay: JSON.parse(JSON.stringify({ layers: w.layers, lid: w.contours.map(c => layerOf.get(c) || null), stash: w.stash })) }; }
     });
     closeEditor();
     if (changed) { regenerate(); msg('Засварыг хадгаллаа. Татахад таны зурсан хэлбэр орно.'); }
@@ -5125,7 +5282,7 @@ def font_info(data):
     if (k === ' ' && !E.space) { E.space = true; canvas.classList.add('pan'); ev.preventDefault(); return; }
     if (mod && lk === 'z') { ev.preventDefault(); ev.shiftKey ? redo() : undo(); return; }
     if (mod && lk === 'y') { ev.preventDefault(); redo(); return; }
-    if (mod && lk === 'a') { ev.preventDefault(); E.sel = new Set(); W().contours.forEach((_, ci) => selectContour(ci, true)); render(); return; }
+    if (mod && lk === 'a') { ev.preventDefault(); E.sel = new Set(); W().contours.forEach((_, ci) => lockedCi(ci) || selectContour(ci, true)); render(); return; }
     if (mod && lk === 'c') { if (copySel()) { ev.preventDefault(); $('edHint').textContent = 'Хууллаа. Ctrl+V дарж энэ эсвэл өөр үсэгт буулгана.'; } return; }
     if (mod && lk === 'v') { if (CLIP) { ev.preventDefault(); paste(0); } return; }
     if (mod && lk === 'd') { ev.preventDefault(); duplicate(); return; }
